@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>identify() test — Digitalis chat</title>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.6;
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 48px 20px 120px;
+        color: #1a1a1a;
+    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #6b7280; margin-top: 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+    .card {
+        border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 20px 22px; margin: 18px 0; background: #fff;
+    }
+    label { display: block; font-weight: 600; font-size: 13.5px; margin: 14px 0 4px; }
+    label:first-child { margin-top: 0; }
+    input[type="text"], input[type="color"] {
+        width: 100%; box-sizing: border-box; padding: 9px 10px;
+        border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;
+    }
+    input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .checkbox-row input { width: 18px; height: 18px; }
+    .checkbox-row label { margin: 0; font-weight: 600; font-size: 13.5px; }
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    button.action {
+        flex: 1; padding: 11px 16px; border: none; border-radius: 8px;
+        font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .btn-send { background: #f26529; color: #fff; }
+    .btn-send:hover { background: #d9551f; }
+    .btn-clear { background: #f3f4f6; color: #374151; }
+    .btn-clear:hover { background: #e5e7eb; }
+    #log {
+        background: #0f172a; color: #a7f3d0; padding: 14px 16px;
+        border-radius: 8px; font-size: 12.5px; font-family: ui-monospace, monospace;
+        white-space: pre-wrap; word-break: break-all; margin-top: 10px; min-height: 20px;
+    }
+    .hint { color: #6b7280; font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>identify() test</h1>
+<p class="sub">Ista test baza kao <a href="/public/demo.html">demo.html</a> — samo sa formom umjesto konzole, da se ne mora ručno kucati <code>DstoreChat('identify', ...)</code> za svaki test.</p>
+
+<div class="card">
+    <label for="customerId">customerId</label>
+    <input type="text" id="customerId" placeholder="npr. 12345">
+
+    <label for="customerName">customerName</label>
+    <input type="text" id="customerName" placeholder="npr. Ivan Ivić">
+
+    <div class="checkbox-row">
+        <input type="checkbox" id="isWholesaleCustomer">
+        <label for="isWholesaleCustomer">isWholesaleCustomer</label>
+    </div>
+
+    <label for="color">color</label>
+    <input type="color" id="color" value="#f26529">
+
+    <label for="logo">logo (URL)</label>
+    <input type="text" id="logo" placeholder="/public/logo-digitalis.svg">
+
+    <div class="actions">
+        <button class="action btn-send" id="sendBtn">Pošalji identify()</button>
+        <button class="action btn-clear" id="clearBtn">Očisti (izloguj)</button>
+    </div>
+
+    <p class="hint">"Pošalji" poziva <code>DstoreChat('identify', {...})</code> sa poljima iznad (prazna/nečekirana polja se ne šalju). "Očisti" poziva isto sa <code>isWholesaleCustomer: false</code> i praznim ID/imenom, kao izlogovan posjetilac.</p>
+    <div id="log">(još ništa poslano)</div>
+</div>
+
+<div class="card">
+    <h2>Šta probati poslije</h2>
+    <ul>
+        <li>Čekiraj <code>isWholesaleCustomer</code>, pošalji, pa u chatu pitaj <em>„baterija litijumska cr14250“</em> — veleprodajni artikal (inače skriven) treba da se pojavi.</li>
+        <li>Klikni „Očisti“, klikni „Novi razgovor“ u chatu, pitaj isto opet — artikal treba da nestane.</li>
+        <li>Promijeni boju i pošalji dok je chat već otvoren — traka po vrhu prozora treba odmah da promijeni boju, bez reload-a.</li>
+        <li>Upiši <code>customerName</code> — vidljivo samo u pravom AI režimu (ne u <code>[MOCK]</code> odgovorima), kroz kontekst poslan modelu.</li>
+    </ul>
+</div>
+
+<script>
+  window.DstoreChat = window.DstoreChat || function () {
+    (window.DstoreChat.q = window.DstoreChat.q || []).push(arguments);
+  };
+</script>
+<script src="/public/embed.js"
+        data-endpoint="/endpoint/chat.php"
+        data-title="Digitalis AI asistent"
+        data-logo="/public/logo-digitalis.svg"
+        defer></script>
+
+<script>
+(function () {
+    'use strict';
+
+    function fields() {
+        var payload = {};
+        var id = document.getElementById('customerId').value.trim();
+        var name = document.getElementById('customerName').value.trim();
+        if (id) { payload.customerId = id; }
+        if (name) { payload.customerName = name; }
+        payload.isWholesaleCustomer = document.getElementById('isWholesaleCustomer').checked;
+        payload.color = document.getElementById('color').value;
+        var logo = document.getElementById('logo').value.trim();
+        if (logo) { payload.logo = logo; }
+        return payload;
+    }
+
+    function log(payload) {
+        document.getElementById('log').textContent =
+            "DstoreChat('identify', " + JSON.stringify(payload, null, 2) + ');';
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', function () {
+        var payload = fields();
+        DstoreChat('identify', payload);
+        log(payload);
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function () {
+        document.getElementById('customerId').value = '';
+        document.getElementById('customerName').value = '';
+        document.getElementById('isWholesaleCustomer').checked = false;
+        var payload = { customerId: '', customerName: '', isWholesaleCustomer: false };
+        DstoreChat('identify', payload);
+        log(payload);
+    });
+})();
+</script>
+
+</body>
+</html>

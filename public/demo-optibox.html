@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optibox AI asistent — lokalni test</title>
+<style>
+    body {
+        font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 20px 120px;
+        color: #1a1a1a;
+    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #6b7280; margin-top: 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+    .card {
+        border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 18px 20px; margin: 18px 0; background: #fff;
+    }
+    .note { border-left: 3px solid #5f5f5f; padding-left: 14px; color: #374151; }
+    ul li { margin-bottom: 6px; }
+    .swatch {
+        display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+        background: #5f5f5f; vertical-align: middle; margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Optibox AI asistent</h1>
+<p class="sub">Lokalni test — optibox.rs katalog (1.327 proizvoda, RSD).</p>
+
+<p class="note">
+    Kliknite krug dolje desno i pitajte nešto. Na primjer:
+    <em>„Imate li usisivače?“</em>
+</p>
+
+<div class="card">
+    <h2>Boja widgeta prati optibox.rs</h2>
+    <p>
+        <span class="swatch"></span> <code>#5f5f5f</code> — ista siva koja se koristi za dugmad na pravom
+        optibox.rs sajtu i u njihovom logu (provjereno uzorkovanjem logo slike), ne D-Store narandžasta.
+    </p>
+</div>
+
+<div class="card">
+    <h2>Šta vrijedi probati</h2>
+    <ul>
+        <li><em>Imate li usisivače?</em> — nudi izbor brenda (klikabilno)</li>
+        <li><em>Grejalica za sobu</em> — ekavica varijanta radi</li>
+        <li><em>Kabl za iphone</em></li>
+        <li><em>Koliko košta dostava?</em></li>
+    </ul>
+</div>
+
+<script src="/public/embed.js"
+        data-endpoint="/endpoint/chat.php"
+        data-title="Optibox AI asistent"
+        data-color="#5f5f5f"
+        data-logo="/public/logo-optibox.svg"
+        data-greeting="Zdravo! Mogu pomoći oko proizvoda, cena, dostave i garancije. Šta vas zanima?"
+        defer></script>
+
+</body>
+</html>

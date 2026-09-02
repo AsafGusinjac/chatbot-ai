@@ -1,0 +1,81 @@
+# {{store_name}} (optibox.rs) — informacije za chat bota
+#
+# OVDJE se dodaju česta pitanja i odgovori. Ovaj fajl smiju mijenjati svi —
+# ne sadrži tehnička pravila, samo činjenice o firmi.
+#
+# Pravila:
+#   - Piši tačne informacije. Ako nešto ne znaš, NE izmišljaj — obriši tu stavku.
+#   - Redovi koji počinju sa # su komentari, bot ih ne vidi.
+#   - Nakon izmjene fajl se odmah primjenjuje, nema restarta.
+#
+# Izvor ovog fajla: optibox.rs/webshop/blogs/infocentar/ (O nama, Rokovi
+# isporuke, Procedura za povrat robe, Servis i povraćaj novca, Pravilnik o
+# zaštiti potrošača), pročitano 2026-08-27. Ne dijeli ovaj fajl sa
+# Digitalisom/D-Storeom — {{company_name}} je zaseban pravni subjekt u
+# Srbiji s vlastitom politikom.
+
+## About {{store_name}}
+
+{{company_name}} is an electronics retailer in Serbia, selling online at https://www.optibox.rs. Originally the general distributor for the Optibox, Amiko, Synaps, Alma and Inverto satellite/DVB equipment brands in Serbia — the online catalog today is much broader: TV & SAT, mobile devices, audio, cables, household appliances, home & tools, energy, air conditioning, security, and PC & gaming equipment.
+
+Head office: Horgoška br.5, 24415 Bački Vinogradi, Serbia.
+Service / returns centre: Bečka 72, 24000 Subotica.
+
+## Contact
+
+Phone: {{support_phone}}
+Email: {{support_email}}
+
+## Delivery
+
+Typical delivery time is 72 hours (up to 3 working days) for items in stock. Items with lower demand or a more complex import process can take longer.
+
+We do not have one published flat delivery cost. If asked the exact cost, say you are not certain and offer the phone number {{support_phone}} or email {{support_email}} — do not estimate or guess a number.
+
+If a package arrives visibly damaged, tell the customer to contact the courier company that delivered it within 24 hours so they can file a damage report. If the package looks fine but the item inside is faulty, tell them to contact us instead.
+
+## Payment
+
+Cash on delivery ("pouzećem") to the courier is available. For online card or bank-transfer payment options, say you are not fully certain of what's offered at checkout and point the customer to the checkout page or {{support_phone}} — do not list specific banks or card types you have not confirmed.
+
+If asked about paying in instalments ("na rate") or any pensioner/PIO-MIO credit line: this deployment does not offer that — say we don't currently offer instalment purchase and offer the phone number {{support_phone}} in case that has changed.
+
+## Promotions / akcije
+
+If asked about current promotions ("akcije", "na akciji", "popust"), search the live catalog with action_only. Do not list promotions from memory and do not invent a discount amount.
+
+## Returns (zakonski rok — 14 dana)
+
+Under Serbian consumer protection law, a customer who ordered online may return an item within 14 days of receiving it, for any reason, provided it comes back in the same condition it was sent (item and packaging undamaged and functional) along with the fiscal receipt and a written reason for the return.
+
+- Items received via courier: the customer sends the item, plus the warranty card (if given), a copy of the fiscal receipt, a written reason for return, and (for web orders) the signed unilateral withdrawal form, to our service centre: Bečka 72, 24000 Subotica.
+- Items bought and picked up in person: bring the item and the fiscal receipt back to the retail location where it was purchased.
+- If we billed the wrong item by our own error, the customer has 24 hours from receiving it to start the return, instead of 14 days.
+- To start a return: call {{support_phone}}, email {{support_email}}, or visit the retail location where the item was purchased.
+
+After the 14-day window, faulty items go through the regular warranty (RMA) process instead — either taken to the authorised service centre named on the warranty card, or sent to Bečka 72, 24000 Subotica.
+
+## Warranty / faulty items (reklamacije, servis)
+
+To start a warranty claim: bring the item to Bečka 72, 24000 Subotica, or call {{support_phone}} to arrange a courier pickup.
+
+Include with the item: the original warranty card (if warranty is longer than 24 months), a copy of the receipt, and as detailed a description of the fault as possible (what happens, when it started, under what conditions) — a vague description can mean the fault isn't reproduced and the same unit is sent back unrepaired.
+
+We respond to a warranty claim within 8 days of receiving it (from the retail location, the service centre, or the call centre), with a decision on repair, replacement, or refund. Physically damaged items, or items used outside the manufacturer's instructions, are not covered — repair costs for those are the customer's own.
+
+If a package arrives visibly damaged, tell the customer to contact the courier company within 24 hours so they can file a damage report. If it arrives undamaged but the item inside doesn't work, contact us directly instead.
+
+For general product warranty length, the search_products tool returns warranty_months for each item — quote that instead of guessing.
+
+## Working hours
+
+Say you are not certain of exact working hours and give the phone number {{support_phone}}.
+
+## Česta pitanja
+
+# Dodaj ovdje u formatu:
+#
+#   P: Koliko dana traje dostava?
+#   O: Obično do 3 radna dana.
+#
+# Svako pitanje koje ovdje dodaš je jedan telefonski poziv manje.

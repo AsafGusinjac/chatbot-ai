@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zed AI asistent — lokalni test</title>
+<style>
+    body {
+        font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 20px 120px;
+        color: #1a1a1a;
+    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #6b7280; margin-top: 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+    .card {
+        border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 18px 20px; margin: 18px 0; background: #fff;
+    }
+    .note { border-left: 3px solid #0064b4; padding-left: 14px; color: #374151; }
+    ul li { margin-bottom: 6px; }
+    .swatch {
+        display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+        background: #0064b4; vertical-align: middle; margin-right: 6px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Zed AI asistent</h1>
+<p class="sub">Lokalni test — zed.hr katalog (3.399 proizvoda, EUR).</p>
+
+<p class="note">
+    Kliknite krug dolje desno i pitajte nešto. Na primjer:
+    <em>„Imate li antene?“</em>
+</p>
+
+<div class="card">
+    <h2>Boja widgeta prati zed.hr</h2>
+    <p>
+        <span class="swatch"></span> <code>#0064b4</code> — ista plava koja se koristi za dugmad i linkove
+        na pravom zed.hr sajtu (provjereno direktno na stranici), ne D-Store narandžasta.
+    </p>
+</div>
+
+<div class="card">
+    <h2>Šta vrijedi probati</h2>
+    <ul>
+        <li><em>Imate li antene?</em> — nudi izbor podvrsta (klikabilno)</li>
+        <li><em>Imate li slušalice bluetooth?</em> — nudi izbor brenda (klikabilno)</li>
+        <li><em>Trebam kabl za iphone</em></li>
+        <li><em>Koliko košta dostava?</em></li>
+    </ul>
+</div>
+
+<script src="/public/embed.js"
+        data-endpoint="/endpoint/chat.php"
+        data-title="Zed AI asistent"
+        data-color="#0064b4"
+        data-logo="/public/logo-zed.svg"
+        data-greeting="Zdravo! Mogu pomoći oko proizvoda, cijena, dostave i garancije. Šta vas zanima?"
+        defer></script>
+
+</body>
+</html>

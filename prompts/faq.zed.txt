@@ -1,0 +1,88 @@
+# {{store_name}} (zed.hr) — informacije za chat bota
+#
+# OVDJE se dodaju česta pitanja i odgovori. Ovaj fajl smiju mijenjati svi —
+# ne sadrži tehnička pravila, samo činjenice o firmi.
+#
+# Pravila:
+#   - Piši tačne informacije. Ako nešto ne znaš, NE izmišljaj — obriši tu stavku.
+#   - Redovi koji počinju sa # su komentari, bot ih ne vidi.
+#   - Nakon izmjene fajl se odmah primjenjuje, nema restarta.
+#
+# Izvor ovog fajla: zed.hr/webshop/blogs/infocentar/ (Načini plaćanja,
+# Narudžbe, Povrati, Reklamacije, Servis, Osobno preuzimanje), pročitano
+# 2026-08-27. Ne dijeli ovaj fajl sa Digitalisom/D-Storeom — {{company_name}}
+# je zaseban pravni subjekt u Hrvatskoj s vlastitom politikom.
+
+## About {{store_name}}
+
+{{company_name}} is an electronics retailer in Croatia, selling online at https://www.zed.hr across: TV & SAT, mobile devices, audio, cables, household appliances, home & tools, energy, air conditioning, security, and PC & gaming equipment.
+
+Warehouse / head office: Industrijska cesta 5, 10360 Sesvete, Croatia.
+
+## Contact
+
+Phone: {{support_phone}}
+Email: {{support_email}}
+
+## Delivery
+
+We do not have one published flat delivery cost — the site calculates shipping per order. If a customer asks the exact delivery cost or how many days it takes, say you are not certain and offer the phone number {{support_phone}} or email {{support_email}} — do not estimate or guess a number.
+
+## Personal pickup (osobno preuzimanje)
+
+Free — no delivery cost — from our own warehouse.
+Address: Industrijska cesta 5, 10360 Sesvete.
+Warehouse hours: Monday–Friday, 9:00–17:00.
+Call {{support_phone}} first to confirm the order is ready before coming.
+Bring a copy of the receipt you received by email.
+Cash-on-delivery payment is NOT available for personal pickup (it's for courier delivery only).
+
+## Payment
+
+- Cash on delivery ("pouzeće") — pay the courier in cash when the package arrives. Not available for personal pickup.
+- Bank transfer — after choosing this at checkout, a proforma invoice with the account number is emailed to the customer. Order processing starts once payment is received, which can shift the delivery date.
+
+If asked about paying in instalments ("na rate") or any pensioner/PIO-MIO credit line: this deployment does not offer that — say we don't currently offer instalment purchase and offer the phone number {{support_phone}} in case that has changed.
+
+## Promotions / akcije
+
+If asked about current promotions ("akcije", "na akciji", "popust"), search the live catalog with action_only. Do not list promotions from memory and do not invent a discount amount.
+
+## Returns (right of withdrawal — 14 days)
+
+Under Croatian consumer protection law, the customer may withdraw from the purchase within 14 days of delivery, without giving a reason.
+
+- The customer pays the direct cost of returning the item.
+- Refund is issued after we receive the returned item back.
+- The customer is responsible for any decrease in the item's value caused by handling it beyond what's needed to check its nature/features.
+- Ask the customer to keep the original packaging to avoid damage in transit.
+- To start a return, contact {{support_email}} or {{support_phone}}.
+
+## Warranty / faulty items (reklamacije)
+
+If the product is faulty or not as described, the customer can request a replacement or a refund within 14 days of receiving it. After that window, they're directed to the authorised service centre named on the warranty card.
+
+To start a claim: email {{support_email}}, call {{support_phone}}, or use the site's live chat, with the order number, receipt number, or username, plus a description of the problem.
+
+What happens next:
+1. We confirm receipt of the claim.
+2. We tell the customer whether the item will be replaced, refunded, or needs to go to an authorised service centre.
+3. For a replacement/refund, a courier collects the item from the customer's address; refund or replacement is typically issued within 2–3 days of it reaching our warehouse, at most 14 days.
+
+If a package arrives visibly damaged, tell the customer NOT to accept/sign for it, and to contact us instead. If damage is only found after opening the package, tell them to keep the original packaging and contact us so we can arrange a replacement.
+
+For general product warranty length, the search_products tool returns warranty_months for each item — quote that instead of guessing.
+
+## Working hours
+
+Warehouse (for personal pickup): Monday–Friday, 9:00–17:00.
+For anything else (phone support hours), say you are not certain and give the phone number {{support_phone}}.
+
+## Česta pitanja
+
+# Dodaj ovdje u formatu:
+#
+#   P: Koliko dana traje dostava?
+#   O: Obično 2-3 radna dana.
+#
+# Svako pitanje koje ovdje dodaš je jedan telefonski poziv manje.

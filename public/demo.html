@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digitalis chat — lokalni test</title>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 20px 120px;
+        color: #1a1a1a;
+    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #6b7280; margin-top: 0; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+    pre {
+        background: #0f172a; color: #e2e8f0; padding: 16px;
+        border-radius: 8px; overflow-x: auto; font-size: 13.5px; line-height: 1.5;
+    }
+    .card {
+        border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 18px 20px; margin: 18px 0; background: #fff;
+    }
+    .note { border-left: 3px solid #1f6feb; padding-left: 14px; color: #374151; }
+    ul li { margin-bottom: 6px; }
+    /* Deliberately hostile CSS, to prove the widget is isolated.
+       Without Shadow DOM these rules would wreck it. */
+    button { background: red !important; font-size: 40px !important; border-radius: 0 !important; }
+    div { letter-spacing: 0px; }
+    * { text-transform: none; }
+</style>
+</head>
+<body>
+
+<h1>Digitalis chat bot</h1>
+<p class="sub">Lokalni test — baza sa 10.692 proizvoda iz Digitalis kataloga (veleprodaja).</p>
+
+<p class="note">
+    Kliknite narandžasti krug dolje desno i pitajte nešto. Na primjer:
+    <em>„Imate li klima uređaj do 1000 KM?“</em>
+</p>
+
+<div class="card">
+    <h2>Digitalis, ne D-Store</h2>
+    <p>
+        Ovo je test stranica za <strong>digitalis.ba</strong> (veleprodaja) — koristi digitalis.ba
+        cijene/URL stil i logo. D-Store (<strong>dstore.ba</strong>, maloprodaja) je poseban sajt sa
+        svojim logom i URL stilom — testira se na <code>demo-dstore.html</code>. Dijele isti katalog,
+        ali su različiti sajtovi.
+    </p>
+</div>
+
+<div class="card">
+    <h2>Kako se stavlja na stranicu</h2>
+    <p>Jedna linija, prije <code>&lt;/body&gt;</code> na digitalis.ba:</p>
+<pre>&lt;script src="https://digitalis.ba/chatbot/public/embed.js"
+        data-endpoint="https://digitalis.ba/chatbot/endpoint/chat.php"
+        defer&gt;&lt;/script&gt;</pre>
+    <p>Bez CSS fajla, bez jQuery, bez ičega drugog.</p>
+</div>
+
+<div class="card">
+    <h2>Zašto ne može pokvariti stranicu</h2>
+    <p>
+        Widget se crta unutar <strong>Shadow DOM-a</strong> — izolovanog dijela stranice.
+        CSS sa stranice ne ulazi unutra, a CSS widgeta ne izlazi napolje.
+    </p>
+    <p>
+        Ova test stranica ima namjerno agresivno pravilo:
+        <code>button { background: red !important; font-size: 40px !important }</code>.
+        Pogledajte dugme ispod — pocrvenjelo je. Widget je netaknut.
+    </p>
+    <button>Obično dugme na stranici (pokvareno)</button>
+</div>
+
+<div class="card">
+    <h2>Šta vrijedi probati</h2>
+    <ul>
+        <li><em>Imate li klima uređaj do 1000 KM?</em> — traži po cijeni</li>
+        <li><em>Trebam bežični miš do 50 KM</em></li>
+        <li><em>Koliko košta dostava?</em> — odgovara iz FAQ-a</li>
+        <li><em>Napiši mi pjesmu</em> — treba pristojno odbiti</li>
+        <li>Osvježite stranicu — razgovor se pamti (localStorage)</li>
+        <li>Kliknite „Novi razgovor“ — briše historiju</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Podešavanja</h2>
+    <p>Sve se mijenja preko atributa na <code>&lt;script&gt;</code> tagu:</p>
+    <ul>
+        <li><code>data-title</code> — naslov u zaglavlju</li>
+        <li><code>data-greeting</code> — prva poruka</li>
+        <li><code>data-color</code> — boja (npr. <code>#e11d48</code>)</li>
+        <li><code>data-position</code> — <code>right</code> ili <code>left</code></li>
+        <li><code>data-logo</code> — URL logo slike za avatar</li>
+    </ul>
+    <p>Ko je kupac (ID, ime, da li je veleprodaja) se ne stavlja na <code>&lt;script&gt;</code>
+    tag — stranica to šalje kroz mali JS "queue" obrazac koji radi bez obzira
+    da li se pozove prije ili poslije <code>embed.js</code>:</p>
+    <pre><code>&lt;script&gt;
+  window.DstoreChat = window.DstoreChat || function () {
+    (window.DstoreChat.q = window.DstoreChat.q || []).push(arguments);
+  };
+  DstoreChat('identify', {
+    customerId: '12345',
+    customerName: 'Ivan Ivić',
+    isWholesaleCustomer: true
+  });
+&lt;/script&gt;</code></pre>
+</div>
+
+<script>
+  window.DstoreChat = window.DstoreChat || function () {
+    (window.DstoreChat.q = window.DstoreChat.q || []).push(arguments);
+  };
+</script>
+<script src="/public/embed.js"
+        data-endpoint="/endpoint/chat.php"
+        data-title="Digitalis AI asistent"
+        data-logo="/public/logo-digitalis.svg"
+        defer></script>
+
+</body>
+</html>

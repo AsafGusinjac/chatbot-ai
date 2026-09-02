@@ -1,0 +1,16 @@
+{
+  "ttl_days": 3,
+  "updated_at": "2026-08-31",
+  "replies": [
+    {
+      "match": "exact",
+      "patterns": ["hvala", "hvala vam", "hvala puno", "fala", "ok hvala", "uredu hvala"],
+      "reply": "Nema na čemu. Ako zatreba još nešto oko artikala, cijena ili dostupnosti, tu sam."
+    },
+    {
+      "match": "exact",
+      "patterns": ["pozdrav", "zdravo", "cao", "ćao", "dobar dan"],
+      "reply": "Pozdrav. Mogu pomoći oko proizvoda, cijena, dostupnosti, dostave i garancije. Šta Vas zanima?"
+    }
+  ]
+}

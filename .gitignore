@@ -1,0 +1,8 @@
+config.local*.php
+!config.local.example.php
+vendor/
+*.log
+logs/
+*.zip
+.claude/
+.DS_Store

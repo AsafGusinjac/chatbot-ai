@@ -1,0 +1,33 @@
+# Public entry points are /endpoint/*.php and /public/*.
+# Block direct access to secrets and internal project files on Apache/cPanel.
+Options -Indexes
+
+<FilesMatch "^(config(\.local.*)?|.*\.sql|.*\.zip|.*\.bak|.*\.old|.*\.orig|\.env)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "^(debug.*|test.*|phpinfo)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+RedirectMatch 404 ^/(?:db|docs|logs)(?:/|$)
+
+<IfModule mod_headers.c>
+    <Files "embed.js">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </Files>
+</IfModule>
