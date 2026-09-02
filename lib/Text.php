@@ -77,6 +77,12 @@ class Text
         // products the catalog names "Ruksak za laptop".
         $text = preg_replace('/\bran(?:ac|ca|cu|cem|cevi|ceve|ceva|cima)\b/u', 'ruksak', $text);
 
+        // Everyday local speech often says "suđe/sudje/sudja" where the
+        // catalog says "posuđe". After diacritic stripping and dj->d those
+        // become "sude/suda", so map the small dish-word family to the
+        // catalog root before tokenization.
+        $text = preg_replace('/\bsud(?:e|a|u|em|ima|ovi|ove|ova|ovima)?\b/u', 'posude', $text);
+
         // Anything that is not a letter or digit becomes a space, so "RG-6",
         // "RG6" and "RG 6" all tokenize alike.
         $text = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text);
