@@ -129,7 +129,7 @@ class Text
         'listaj', 'listajte', 'vrati', 'vratite', 'daj', 'dajte', 'ponudi', 'preporuci',
         // politeness and filler
         'molim', 'hvala', 'pozdrav', 'dobar', 'dobro', 'jutro', 'vece',
-        'lijep', 'lijepo', 'me', 'mi', 'vi', 'vas', 'nam', 'nas', 'ste',
+        'lijep', 'lijepo', 'me', 'mi', 'ti', 'vi', 'vas', 'nam', 'nas', 'ste',
         'sam', 'bih', 'teli', 'super', 'the', 'you', 'have', 'do', 'is', 'are', 'any',
         // greetings - found 2026-08-26 on zed.hr: "Bok, imate li kabele za
         // laptop?" had "bok" survive as a real search token, which then
@@ -614,7 +614,7 @@ class Text
 
         $discountDescPattern = '/\b(?:najve[cć]\w*\s+(?:akcij\w*|popust\w*|sni(?:z|ž)en\w*|sniz\w*)|najvi[sš]\w*\s+(?:sni(?:z|ž)en\w*|sniz\w*|popust\w*)|najbolj\w*\s+(?:akcij\w*|popust\w*)|najve[cć]\w*\s+procen\w*\s+popust\w*)\b/iu';
         $ascPattern = '/\b(?:najjeftin\w*|najeftin\w*|jeftinij\w*|povoljnij\w*|najpovoljn\w*|najmanj\w*\s+cijen\w*|najniz\w*\s+cijen\w*|najniž\w*\s+cijen\w*|od\s+najjeftinij\w*|od\s+najeftinij\w*)\b/iu';
-        $descPattern = '/\b(?:najskuplj\w*|skuplj\w*|najvis\w*\s+cijen\w*|najviš\w*\s+cijen\w*|od\s+najskuplj\w*)\b/iu';
+        $descPattern = '/\b(?:najskuplj\w*|najskulplj\w*|skuplj\w*|skulplj\w*|najvis\w*\s+cijen\w*|najviš\w*\s+cijen\w*|od\s+najskuplj\w*|od\s+najskulplj\w*)\b/iu';
 
         if (preg_match($discountDescPattern, $query)) {
             $sort = 'discount_desc';
