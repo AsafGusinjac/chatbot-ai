@@ -1520,6 +1520,20 @@ class ChatService
             $sort = 'discount_desc';
         }
 
+        $budgetForBrandChoice = Text::extractBudget($message);
+        $hasPriceConstraintForBrandChoice = $budgetForBrandChoice['min_price'] !== null || $budgetForBrandChoice['max_price'] !== null
+            || (isset($budgetForBrandChoice['target_price']) && $budgetForBrandChoice['target_price'] !== null);
+        if (!$actionOnly
+            && $sort === null
+            && !$hasPriceConstraintForBrandChoice
+            && preg_match('/\b(?:mark\w*|brend\w*|proizvodac\w*)\b/u', Text::normalize($message)) === 1
+        ) {
+            $brands = $this->search->brandChoicesForQuery($query);
+            if ($brands !== null) {
+                return $this->brandChoiceReply($brands['category'], $brands['options']);
+            }
+        }
+
         // A bare single word ("ploce", "filter", "stalak") can genuinely mean
         // several unrelated products in this catalog. Guessing one and
         // showing the wrong thing is worse than asking - and mixing all of
@@ -1541,24 +1555,23 @@ class ChatService
             }
         }
 
-        $broadTypeReply = $this->broadTypeChoiceReply($query);
-        if ($broadTypeReply !== null) {
-            return $broadTypeReply;
-        }
-
         // The bucket itself has no further subtype split ("monitori" is
         // already specific), but if several different brands are in stock,
         // ask which one instead of picking 3 essentially at random. Only
         // when the customer has not already narrowed things down - a price
         // range, a sort ("najjeftiniji"), or an action-only request all mean
         // they want a direct answer, not another question.
-        $hasPriceConstraint = $budget['min_price'] !== null || $budget['max_price'] !== null
-            || (isset($budget['target_price']) && $budget['target_price'] !== null);
+        $hasPriceConstraint = $hasPriceConstraintForBrandChoice;
         if (!$actionOnly && $sort === null && !$hasPriceConstraint) {
             $brands = $this->search->brandChoicesForQuery($query);
             if ($brands !== null) {
                 return $this->brandChoiceReply($brands['category'], $brands['options']);
             }
+        }
+
+        $broadTypeReply = $this->broadTypeChoiceReply($query);
+        if ($broadTypeReply !== null) {
+            return $broadTypeReply;
         }
 
         $results = $this->search->search($query, [

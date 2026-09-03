@@ -4027,6 +4027,10 @@ class ProductSearch
             // WiFi kind is what "video nadzor" means for the overwhelming
             // majority of customers today) rather than asking - a customer
             // who specifically wants analog already says "analogna kamera".
+            'kamera' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
+            'kamere' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
+            'sigurnosna kamera' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
+            'sigurnosne kamere' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
             'video nadzor' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
             'sistem video nadzora' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
             'video nadzor sistem' => ['type' => 'category', 'name' => 'Video nadzor - IP', 'parent' => 'Security'],
