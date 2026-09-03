@@ -1670,7 +1670,7 @@ class ChatService
 
                 if ($cheapest !== []) {
                     $this->lastProducts = $cheapest;
-                    $this->lastMoreUrl  = $this->search->shopListingUrlForResults($cheapest);
+                    $this->lastMoreUrl  = $this->search->shopListingUrlForResults($cheapest, 'price_asc');
 
                     $topic = $this->productTopicLabel($query);
                     $intro = $topic !== ''
@@ -1706,7 +1706,7 @@ class ChatService
         }
 
         $this->lastProducts = $results;
-        $this->lastMoreUrl  = $this->search->shopListingUrlForResults($results);
+        $this->lastMoreUrl  = $this->search->shopListingUrlForResults($results, $sort);
 
         $hasAction = $actionOnly;
         foreach ($results as $product) {
@@ -2829,7 +2829,7 @@ class ChatService
         // search results; searching for context must not automatically turn
         // into a "buy this" UI.
         $this->candidateProducts = $results;
-        $this->candidateMoreUrl  = $this->search->shopListingUrlForResults($results);
+        $this->candidateMoreUrl  = $this->search->shopListingUrlForResults($results, $sort);
 
         return json_encode($results, JSON_UNESCAPED_UNICODE);
     }

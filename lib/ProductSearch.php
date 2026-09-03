@@ -3175,16 +3175,15 @@ class ProductSearch
      * for listings, so its "Prikaži više" link is built from the category and,
      * when all visible products share it, the brand name.
      *
-     * The live listing page has no price or spec (RPM) filter at all - only
-     * category, subcategory, brand and a keyword box - so a budget or spin
-     * speed the customer gave narrows what search() itself returns, but
-     * cannot carry over into this link. Callers should state that part in
-     * the reply text instead.
+     * Price ordering can be carried as URL intent. If a shop ignores unknown
+     * query params the link still opens the same listing; if it supports one
+     * of these sort keys, it can immediately show the requested order.
      *
      * @param array[] $results Shaped rows as returned by search() (need 'id').
+     * @param string|null $sort price_asc, price_desc or discount_desc.
      * @return string|null
      */
-    public function shopListingUrlForResults(array $results)
+    public function shopListingUrlForResults(array $results, $sort = null)
     {
         $ids = [];
         foreach ($results as $row) {
@@ -3259,19 +3258,51 @@ class ProductSearch
             $subcategoryName = isset($firstResult['subcategory']) ? trim((string) $firstResult['subcategory']) : '';
 
             if ($categoryName !== '' && $subcategoryName !== '') {
-                return $shopBase . '/' . self::dstorePathSegment($categoryName . '-' . $subcategoryName);
+                return $this->withListingSort($shopBase . '/' . self::dstorePathSegment($categoryName . '-' . $subcategoryName), $sort);
             }
             if ($categoryName !== '') {
-                return $shopBase . '/' . self::dstorePathSegment($categoryName);
+                return $this->withListingSort($shopBase . '/' . self::dstorePathSegment($categoryName), $sort);
             }
             if ($brandId !== null && isset($firstResult['brand']) && trim((string) $firstResult['brand']) !== '') {
-                return $shopBase . '/' . self::dstoreLabelSegment((string) $firstResult['brand']);
+                return $this->withListingSort($shopBase . '/' . self::dstoreLabelSegment((string) $firstResult['brand']), $sort);
             }
 
-            return isset($firstResult['url']) && $firstResult['url'] !== '' ? (string) $firstResult['url'] : null;
+            return isset($firstResult['url']) && $firstResult['url'] !== ''
+                ? $this->withListingSort((string) $firstResult['url'], $sort)
+                : null;
         }
 
-        return $shopBase . '/webshop/proizvodi/?' . http_build_query($params);
+        return $this->withListingSort($shopBase . '/webshop/proizvodi/?' . http_build_query($params), $sort);
+    }
+
+    /**
+     * @param string      $url
+     * @param string|null $sort
+     * @return string
+     */
+    private function withListingSort($url, $sort)
+    {
+        if (!in_array($sort, ['price_asc', 'price_desc', 'discount_desc'], true)) {
+            return $url;
+        }
+
+        $sortParams = [
+            'sort'  => $sort,
+            'order' => $sort,
+        ];
+
+        if ($sort === 'price_asc') {
+            $sortParams['orderby'] = 'price';
+            $sortParams['dir'] = 'asc';
+        } elseif ($sort === 'price_desc') {
+            $sortParams['orderby'] = 'price';
+            $sortParams['dir'] = 'desc';
+        } elseif ($sort === 'discount_desc') {
+            $sortParams['orderby'] = 'discount';
+            $sortParams['dir'] = 'desc';
+        }
+
+        return $url . (strpos($url, '?') === false ? '?' : '&') . http_build_query($sortParams);
     }
 
     /**
