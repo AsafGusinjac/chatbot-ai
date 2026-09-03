@@ -39,7 +39,9 @@ C:\xampp\php\php.exe tools\sync_catalog.php
 The script copies brands, categories, subcategories and products into local
 MySQL. Customer questions search this local database.
 
-Nightly sync is enough unless management needs near-real-time stock.
+For these storefronts, prices and stock change often, so run sync every 2
+hours. The script has a lock file; if one sync is still running when the next
+cron starts, the new run exits cleanly instead of overlapping.
 
 ## Windows Task Scheduler example
 
@@ -63,14 +65,14 @@ C:\path\to\chatbot\tools\sync_catalog.php
 C:\path\to\chatbot
 ```
 
-Run once every night, for example at 03:00.
+Run every 2 hours.
 
 ## Linux cron example
 
 If the server is Linux:
 
 ```cron
-0 3 * * * /usr/bin/php /var/www/chatbot/tools/sync_catalog.php >> /var/log/dstore-chatbot-sync.log 2>&1
+0 */2 * * * /usr/bin/php /var/www/chatbot/tools/sync_catalog.php >> /home/falcomba/chatbot-sync.log 2>&1
 ```
 
 ## What to ask the server/admin team
@@ -81,7 +83,7 @@ Ask for:
 - MySQL or MariaDB database for the chatbot.
 - A database user limited to that chatbot database.
 - A private writable folder for `data/ratelimit`.
-- Ability to run `tools/sync_catalog.php` once per night.
+- Ability to run `tools/sync_catalog.php` every 2 hours.
 - HTTPS URL for the API endpoint, for example `/chatbot/endpoint/chat.php`.
 
 The website only needs one script tag when ready:

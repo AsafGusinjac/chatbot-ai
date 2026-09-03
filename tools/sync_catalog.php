@@ -10,7 +10,7 @@
  * lists are deleted at the end.
  *
  * Run:  C:\xampp\php\php.exe tools\sync_catalog.php
- * Cron: nightly is plenty; prices and stock do not move by the minute.
+ * Cron: every 2 hours is fine for stores with frequent price/stock changes.
  *
  * Target: PHP 7.4.
  */
@@ -24,6 +24,7 @@ require __DIR__ . '/../lib/Text.php';
 
 const BATCH_SIZE = 250;
 
+$syncLock = acquireSyncLock();
 $startedAt = microtime(true);
 $runStamp  = date('Y-m-d H:i:s');
 
@@ -91,6 +92,32 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Prevent overlapping cron runs. If a previous sync is still running, this
+ * run exits successfully so cron does not spam failure emails.
+ *
+ * @return resource
+ */
+function acquireSyncLock()
+{
+    $dir = __DIR__ . '/../data';
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException('Cannot create data directory for sync lock.');
+    }
+
+    $handle = fopen($dir . '/sync_catalog.lock', 'c');
+    if ($handle === false) {
+        throw new RuntimeException('Cannot open sync lock file.');
+    }
+
+    if (!flock($handle, LOCK_EX | LOCK_NB)) {
+        echo "Another sync is already running; skipping.\n";
+        exit(0);
+    }
+
+    return $handle;
+}
 
 /**
  * Add action/promotion columns to existing local databases.
