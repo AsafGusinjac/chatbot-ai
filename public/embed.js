@@ -1130,7 +1130,12 @@
         return msg ? { row: row, msg: msg } : null;
     }
 
-    function addHumanContactOptions() {
+    function contactTextMentionsChannels(text) {
+        var s = String(text || '').toLowerCase();
+        return /whats\s*app|whatsapp|viber|messenger|m\.me|wa\.me/.test(s);
+    }
+
+    function addHumanContactOptions(force) {
         var links = [
             { label: 'WhatsApp', href: CFG.whatsapp },
             { label: 'Viber', href: CFG.viber },
@@ -1139,12 +1144,13 @@
             return item.href;
         });
 
-        if (!links.length || els.msgs.querySelector('.human-contact')) {
+        if (!links.length || (!force && els.msgs.querySelector('.human-contact'))) {
             return;
         }
 
         var wrap = document.createElement('div');
         wrap.className = 'human-contact';
+        wrap.setAttribute('data-hydrated', '1');
 
         var title = document.createElement('div');
         title.className = 'human-contact-title';
@@ -1986,6 +1992,9 @@
                     addCartAction(data.cart_product);
                     addQuickReplies(data.quick_replies);
                     addBrandChoices(data.brand_choices);
+                    if (contactTextMentionsChannels(text) || contactTextMentionsChannels(data.reply)) {
+                        addHumanContactOptions(true);
+                    }
                 } else if (data && data.error) {
                     addMessage(data.error, 'err');
                 } else {
