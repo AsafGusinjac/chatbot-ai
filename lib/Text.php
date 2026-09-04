@@ -91,6 +91,23 @@ class Text
     }
 
     /**
+     * Remove phrases where the customer is referring to our catalog/database,
+     * not asking for products named "baza" or "katalog".
+     *
+     * @param string $text
+     * @return string
+     */
+    public static function stripCatalogMetaPhrases($text)
+    {
+        $text = (string) $text;
+        $scopeNoun = '(?:baz[aiue](?:\s+podat\w*)?|katalog\w*|sistem\w*|asortiman\w*|ponud\w*)';
+        $owner = '(?:moj\w*|nas\w*|naš\w*|tvoj\w*|vas\w*|vaš\w*|ov\w*)';
+        $pattern = '/\b(?:(?:u|iz|sa|s)\s+(?:' . $owner . '\s+)?' . $scopeNoun . '|' . $owner . '\s+' . $scopeNoun . ')\b/iu';
+
+        return trim(preg_replace('/\s+/u', ' ', (string) preg_replace($pattern, ' ', $text)));
+    }
+
+    /**
      * Words that carry no product meaning, in normalised (diacritic-free) form.
      *
      * Customers ask "Imate li grijalice na stanju?", not "grijalica". Without

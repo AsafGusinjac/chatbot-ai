@@ -436,19 +436,25 @@ class ChatService
             ];
         }
 
-        $broadTypeReply = $this->broadTypeChoiceReply($message);
-        if ($broadTypeReply !== null) {
-            $this->store->append($conversationId, 'user', $message);
-            $this->store->append($conversationId, 'assistant', $broadTypeReply);
+        $earlyBudget = Text::extractBudget($message);
+        $earlySort = Text::extractSortIntent($earlyBudget['query']);
+        $earlyHasPriceConstraint = $earlyBudget['min_price'] !== null || $earlyBudget['max_price'] !== null
+            || (isset($earlyBudget['target_price']) && $earlyBudget['target_price'] !== null);
+        if ($earlySort['sort'] === null && !$earlyHasPriceConstraint && !$this->looksLikeActionRequest($message)) {
+            $broadTypeReply = $this->broadTypeChoiceReply($message);
+            if ($broadTypeReply !== null) {
+                $this->store->append($conversationId, 'user', $message);
+                $this->store->append($conversationId, 'assistant', $broadTypeReply);
 
-            return [
-                'reply'           => $broadTypeReply,
-                'conversation_id' => $conversationId,
-                'products'        => [],
-                'more_url'        => null,
-                'quick_replies'   => $this->lastQuickReplies,
-                'brand_choices'   => [],
-            ];
+                return [
+                    'reply'           => $broadTypeReply,
+                    'conversation_id' => $conversationId,
+                    'products'        => [],
+                    'more_url'        => null,
+                    'quick_replies'   => $this->lastQuickReplies,
+                    'brand_choices'   => [],
+                ];
+            }
         }
 
         $brandChoiceReply = $this->brandChoiceForBroadCatalogQuestion($message);
@@ -1569,9 +1575,11 @@ class ChatService
             }
         }
 
-        $broadTypeReply = $this->broadTypeChoiceReply($query);
-        if ($broadTypeReply !== null) {
-            return $broadTypeReply;
+        if ($sort === null && !$hasPriceConstraint) {
+            $broadTypeReply = $this->broadTypeChoiceReply($query);
+            if ($broadTypeReply !== null) {
+                return $broadTypeReply;
+            }
         }
 
         $results = $this->search->search($query, [

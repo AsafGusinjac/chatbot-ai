@@ -85,6 +85,8 @@ class ProductSearch
             $sort = null;
         }
 
+        $query = Text::stripCatalogMetaPhrases($query);
+
         $sortIntent = Text::extractSortIntent($query);
         $query      = $sortIntent['query'];
         if ($sort === null && $sortIntent['sort'] !== null) {
@@ -173,7 +175,7 @@ class ProductSearch
         // computed after brand extraction too: bare brand queries strip down
         // to no product words by design, and should browse that brand instead
         // of returning an empty result.
-        $hasFilterOnlyQuery = $actionOnly || $newOnly || $brandId !== null;
+        $hasFilterOnlyQuery = $actionOnly || $newOnly || $brandId !== null || $sort !== null;
 
         // Washing machine spin speed ("1400 obrtaja", "preko 1200 obrtaja").
         $spinMin = $spinMax = $spinTarget = null;
