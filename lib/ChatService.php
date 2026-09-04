@@ -331,7 +331,10 @@ class ChatService
 
         $directProduct = $this->directProductFromContext($conversationId, $message);
         if ($directProduct !== null) {
-            $reply = $this->singleProductReply($directProduct, $message);
+            $compactFollowup = $this->isCompactProductFollowup($message);
+            $reply = $compactFollowup
+                ? $this->singleProductFollowupReply($directProduct, $message)
+                : $this->singleProductReply($directProduct, $message);
 
             // "Pokazi mi ovaj prvi racunar" honours "prvi" correctly, but if
             // the first item shown was actually a monitor, silently handing
@@ -342,7 +345,8 @@ class ChatService
                 $reply = $mismatchNote . "\n\n" . $reply;
             }
 
-            $this->lastProducts = [$directProduct];
+            $this->lastProducts = $compactFollowup ? [] : [$directProduct];
+            $this->lastCartProduct = ($compactFollowup && !empty($directProduct['in_stock'])) ? $directProduct : null;
             $this->store->setSelectedProductId($conversationId, (int) $directProduct['id']);
 
             $this->store->append($conversationId, 'user', $message);
@@ -352,6 +356,7 @@ class ChatService
                 'reply'           => $reply,
                 'conversation_id' => $conversationId,
                 'products'        => $this->lastProducts,
+                'cart_product'    => $this->lastCartProduct,
                 'more_url'        => $this->lastMoreUrl,
                 'quick_replies'   => [],
             ];
@@ -482,6 +487,7 @@ class ChatService
                 'reply'           => $directProductReply,
                 'conversation_id' => $conversationId,
                 'products'        => $this->lastProducts,
+                'cart_product'    => $this->lastCartProduct,
                 'more_url'        => $this->lastMoreUrl,
                 'quick_replies'   => [],
             ];
@@ -1123,11 +1129,19 @@ class ChatService
             return null;
         }
 
-        $this->lastProducts = [$selected];
         $this->lastMoreUrl  = $this->search->shopListingUrlForResults([$selected]);
         if ($conversationId !== null) {
             $this->store->setSelectedProductId($conversationId, (int) $selected['id']);
         }
+
+        if ($this->isCompactProductFollowup($message)) {
+            $this->lastProducts = [];
+            $this->lastCartProduct = !empty($selected['in_stock']) ? $selected : null;
+
+            return $this->singleProductFollowupReply($selected, $message);
+        }
+
+        $this->lastProducts = [$selected];
 
         return $this->singleProductReply($selected, $message);
     }
@@ -3339,6 +3353,21 @@ class ChatService
         $lines[] = $this->friendlyProductClosing([$product]);
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param string $message
+     * @return bool
+     */
+    private function isCompactProductFollowup($message)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\b(?:detalj\w*|opis\w*|slik\w*|specifikacij\w*|karakteristik\w*|informacij\w*)\b/u', $norm) === 1) {
+            return false;
+        }
+
+        return $this->looksLikeStockQuestion($message)
+            || preg_match('/\b(?:stanj\w*|lager\w*|dostupn\w*|cijen\w*|cena|kosta\w*|koliko|garancij\w*|jamstv\w*)\b/u', $norm) === 1;
     }
 
     /**
