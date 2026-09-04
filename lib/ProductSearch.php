@@ -90,6 +90,7 @@ class ProductSearch
         }
 
         $query = Text::stripCatalogMetaPhrases($query);
+        $query = preg_replace('/\bdj\b/iu', 'DJI', (string) $query);
 
         $sortIntent = Text::extractSortIntent($query);
         $query      = $sortIntent['query'];
@@ -119,6 +120,8 @@ class ProductSearch
         if ($targetPrice === null && isset($budget['target_price']) && $budget['target_price'] !== null) {
             $targetPrice = $budget['target_price'];
         }
+
+        $query = $this->stripProductAttributeQuestionWords($query);
 
         // A brand mentioned in the sentence ("gorenje veš mašine do 700 KM")
         // becomes a real brand_id filter instead of relying on the brand name
@@ -464,6 +467,8 @@ class ProductSearch
             $results = $this->applyDominantCategoryFilter($results);
         }
 
+        $results = $this->rankExactModelPhraseMatches($results, $query);
+
         if ($targetPrice !== null || $targetCableLength !== null || $spinTarget !== null || $productPreference !== null || $sort !== null || $isBareSingleWordQuery) {
             $results = $this->rankByIntent($results, $targetPrice, $targetCableLength, $productPreference, $sort, $spinTarget);
             $results = array_slice($results, 0, $limit);
@@ -669,6 +674,33 @@ class ProductSearch
             'query'       => trim(preg_replace('/\s+/u', ' ', $query)),
             'action_only' => true,
         ];
+    }
+
+    /**
+     * Keep product identity words when a full customer question also contains
+     * attribute words. Example: "DJI Lite X1 koliko mu traje baterija" should
+     * search as "DJI Lite X1", then the answer layer can read the runtime.
+     *
+     * @param string $query
+     * @return string
+     */
+    private function stripProductAttributeQuestionWords($query)
+    {
+        $norm = Text::normalize($query);
+        $hasBattery = preg_match('/\b(?:baterij\w*|punjenj\w*|autonomij\w*|vrijeme\s+rada|vreme\s+rada|vrijeme\s+leta|vreme\s+leta|let\w*)\b/u', $norm) === 1;
+        $hasDuration = preg_match('/\b(?:koliko|kolko|traj\w*|izdrz\w*|drzi|radi|rada|let\w*|minut\w*|sati|sat\w*)\b/u', $norm) === 1;
+        if (!$hasBattery || !$hasDuration) {
+            return $query;
+        }
+
+        $clean = preg_replace(
+            '/\b(?:koliko|kolko|mu|joj|njemu|njega|njim|taj|ta|to|ovaj|ova|ovo|baterij\w*|punjenj\w*|autonomij\w*|traj\w*|izdrz\w*|izdrž\w*|drzi|drži|radi|rada|vrijeme|vreme|leta?|minut\w*|sati|sat\w*)\b/iu',
+            ' ',
+            (string) $query
+        );
+        $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
+
+        return $clean !== '' ? $clean : $query;
     }
 
     // -----------------------------------------------------------------------
@@ -4214,6 +4246,44 @@ class ProductSearch
         );
 
         return preg_match('/\b(?:pribor|oprema|dodat\w*|adapter\w*|punjac\w*|kabl\w*|kabel\w*|maska|maske|futrol\w*|torb\w*|ruksak\w*|stakl\w*|zastit\w*|cetk\w*|crijev\w*|stopic\w*|filter\w*)\b/u', $text) === 1;
+    }
+
+    /**
+     * @param array[] $results
+     * @param string  $query
+     * @return array[]
+     */
+    private function rankExactModelPhraseMatches(array $results, $query)
+    {
+        $phrase = Text::normalize($query);
+        $tokens = Text::meaningfulTokens($phrase);
+        if (count($tokens) < 2 || preg_match('/\d/u', $phrase) !== 1) {
+            return $results;
+        }
+
+        foreach ($results as $i => $row) {
+            $haystack = Text::normalize(
+                (isset($row['brand']) ? (string) $row['brand'] : '') . ' '
+                . (isset($row['model']) ? (string) $row['model'] : '') . ' '
+                . (isset($row['name']) ? (string) $row['name'] : '')
+            );
+            $results[$i]['_exact_model_phrase'] = strpos($haystack, $phrase) !== false ? 1 : 0;
+            $results[$i]['_exact_model_order'] = $i;
+        }
+
+        usort($results, function ($a, $b) {
+            if ((int) $a['_exact_model_phrase'] !== (int) $b['_exact_model_phrase']) {
+                return (int) $a['_exact_model_phrase'] > (int) $b['_exact_model_phrase'] ? -1 : 1;
+            }
+
+            return (int) $a['_exact_model_order'] < (int) $b['_exact_model_order'] ? -1 : 1;
+        });
+
+        foreach ($results as $i => $row) {
+            unset($results[$i]['_exact_model_phrase'], $results[$i]['_exact_model_order']);
+        }
+
+        return $results;
     }
 
     /**

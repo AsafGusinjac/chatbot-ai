@@ -1359,6 +1359,7 @@ class ChatService
         $looksSpecificToCurrentProduct =
             $this->currentProductAction !== ''
             || $this->looksLikeStockQuestion($message)
+            || $this->looksLikeBatteryRuntimeQuestion($message)
             || preg_match('/\b(?:cijena|cena|kosta|koliko|garancija|jamstvo|dostava|dostupan|dostupno|stanje|detalj\w*|opis\w*|slik\w*|specifikacij\w*|karakteristik\w*)\b/u', $norm) === 1;
 
         if (!$looksSpecificToCurrentProduct) {
@@ -3654,6 +3655,13 @@ class ChatService
             $lines[] = 'Kratko: ' . $summary;
         }
 
+        if ($this->looksLikeBatteryRuntimeQuestion($message)) {
+            $runtime = $this->batteryRuntimeFromProduct($product);
+            if ($runtime !== null) {
+                $lines[] = 'Baterija: ' . $runtime . '.';
+            }
+        }
+
         if (!empty($product['in_stock'])) {
             $this->lastCartProduct = $product;
             $lines[] = 'Ako želite kupiti ovaj artikal, ispod možete kliknuti Dodaj u korpu.';
@@ -3833,6 +3841,7 @@ class ChatService
         }
 
         return $this->looksLikeStockQuestion($message)
+            || $this->looksLikeBatteryRuntimeQuestion($message)
             || preg_match('/\b(?:stanj\w*|lager\w*|dostupn\w*|cijen\w*|cena|kosta\w*|koliko|garancij\w*|jamstv\w*)\b/u', $norm) === 1;
     }
 
@@ -3874,6 +3883,15 @@ class ChatService
         $cartHint = !empty($product['in_stock'])
             ? ' Ako želite kupiti ovaj artikal, kliknite dugme Dodaj u korpu ispod.'
             : '';
+
+        if ($this->looksLikeBatteryRuntimeQuestion($message)) {
+            $runtime = $this->batteryRuntimeFromProduct($product);
+            if ($runtime !== null) {
+                return 'Baterija za ovaj artikal traje ' . $runtime . '. ' . $availability . $cartHint;
+            }
+
+            return 'Za ovaj artikal trenutno ne vidim jasno upisano trajanje baterije u katalogu. ' . $availability . ' Za potvrdu najbolje je provjeriti prije narudžbe.' . $cartHint;
+        }
 
         if ($action === 'stock' || $this->looksLikeStockQuestion($message) || preg_match('/\b(?:stanj\w*|lager\w*|dostupn\w*)\b/u', $norm) === 1) {
             return !empty($product['in_stock'])
@@ -3935,6 +3953,102 @@ class ChatService
         }
 
         return 1;
+    }
+
+    /**
+     * @param string $message
+     * @return bool
+     */
+    private function looksLikeBatteryRuntimeQuestion($message)
+    {
+        $norm = Text::normalize($message);
+        $hasBattery = preg_match('/\b(?:baterij\w*|punjenj\w*|autonomij\w*|vrijeme\s+rada|vreme\s+rada|vrijeme\s+leta|vreme\s+leta|let\w*)\b/u', $norm) === 1;
+        $hasDuration = preg_match('/\b(?:koliko|kolko|traj\w*|izdrz\w*|drzi|radi|rada|let\w*|minut\w*|sati|sat\w*)\b/u', $norm) === 1;
+
+        return $hasBattery && $hasDuration;
+    }
+
+    /**
+     * @param array $product
+     * @return string|null
+     */
+    private function batteryRuntimeFromProduct(array $product)
+    {
+        $fields = [
+            isset($product['name']) ? (string) $product['name'] : '',
+            isset($product['model']) ? (string) $product['model'] : '',
+            isset($product['description']) ? strip_tags((string) $product['description']) : '',
+        ];
+        $text = trim(preg_replace('/\s+/u', ' ', implode(' ', $fields)));
+        if ($text === '') {
+            return null;
+        }
+
+        $patterns = [
+            '/(?:trajanje|vrijeme|vreme|autonomija|let|leta|rada|radi|izdrzava|izdržava)[^.;:,]{0,80}?\b(?:do|cca\.?|oko|približno|priblizno)?\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b/iu',
+            '/\b(?:do|cca\.?|oko|približno|priblizno)\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b[^.;:,]{0,80}?(?:trajanje|vrijeme|vreme|autonomija|let|leta|rada|radi|baterij)/iu',
+            '/\bbaterij\w*[^.;:,]{0,80}?\b(?:do|cca\.?|oko|približno|priblizno)?\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b/iu',
+            '/\b(?:do|cca\.?|oko|približno|priblizno)\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text, $m) === 1) {
+                $amount = str_replace(',', '.', (string) $m[1]);
+                $unit = Text::normalize((string) $m[2]);
+                if ($this->looksLikePlausibleRuntime($amount, $unit)) {
+                    return 'do ' . $this->formatRuntimeAmount($amount, $unit);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param string $amount
+     * @param string $unit
+     * @return bool
+     */
+    private function looksLikePlausibleRuntime($amount, $unit)
+    {
+        $value = (float) $amount;
+        if ($value <= 0) {
+            return false;
+        }
+        if (strpos($unit, 'h') === 0 || strpos($unit, 'sat') === 0) {
+            return $value <= 72;
+        }
+
+        return $value <= 999;
+    }
+
+    /**
+     * @param string $amount
+     * @param string $unit
+     * @return string
+     */
+    private function formatRuntimeAmount($amount, $unit)
+    {
+        $value = (float) $amount;
+        $display = floor($value) == $value
+            ? (string) (int) $value
+            : str_replace('.', ',', rtrim(rtrim(number_format($value, 1, '.', ''), '0'), '.'));
+
+        if (strpos($unit, 'h') === 0 || strpos($unit, 'sat') === 0) {
+            $lastTwo = ((int) $value) % 100;
+            $last = ((int) $value) % 10;
+            if ($display === '1') {
+                $word = 'sat';
+            } elseif ($last >= 2 && $last <= 4 && !($lastTwo >= 12 && $lastTwo <= 14)) {
+                $word = 'sata';
+            } else {
+                $word = 'sati';
+            }
+
+            return $display . ' ' . $word;
+        }
+
+        return $display . ' minuta';
     }
 
     /**
