@@ -83,7 +83,20 @@
     // URL of a logo image, used as the message avatar instead of the
     // built-in D-Store wordmark. Empty string = use the built-in one.
     var LOGO_URL = (script && script.getAttribute('data-logo')) || '';
+    var THEME = normalizeTheme(script && script.getAttribute('data-theme'));
     var MAX_LEN  = 1500;
+
+    function normalizeTheme(theme) {
+        theme = String(theme || '').toLowerCase();
+        return theme === 'light' ? 'light' : 'dark';
+    }
+
+    function setTheme(theme) {
+        THEME = normalizeTheme(theme);
+        if (typeof els !== 'undefined' && els.root) {
+            els.root.setAttribute('data-theme', THEME);
+        }
+    }
 
     // Per-visitor identity pushed by the site via DstoreChat('identify', {...})
     // - see embed.js's docblock for the full command-queue pattern (this file
@@ -109,6 +122,9 @@
             // takes effect on the next message with no further work.
             LOGO_URL = payload.logo;
         }
+        if (payload.theme) {
+            setTheme(payload.theme);
+        }
     }
 
     (function bootDstoreChat() {
@@ -116,6 +132,8 @@
         window.DstoreChat = function (cmd, payload) {
             if (cmd === 'identify') {
                 applyIdentify(payload || {});
+            } else if (cmd === 'theme' || cmd === 'setTheme') {
+                setTheme(payload);
             }
         };
         for (var i = 0; i < queued.length; i++) {
@@ -134,6 +152,7 @@
     function build() {
         var root = document.createElement('div');
         root.className = 'dsc-root';
+        root.setAttribute('data-theme', THEME);
 
         // Panel
         var panel = document.createElement('div');

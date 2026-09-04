@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat theme switch demo</title>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 48px 20px 120px;
+        background: #f5f7fb;
+        color: #111827;
+    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #64748b; margin-top: 0; }
+    .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 24px;
+        padding: 16px;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        background: #fff;
+    }
+    button {
+        min-height: 38px;
+        border: 1px solid #d8dee8;
+        border-radius: 8px;
+        padding: 0 16px;
+        background: #fff;
+        color: #111827;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    button:hover { border-color: #f26529; }
+    code {
+        background: #eef2f7;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Chat tema</h1>
+<p class="sub">Otvori chat dolje desno, pa prebaci dark/light.</p>
+
+<div class="toolbar">
+    <button type="button" onclick="DstoreChat('theme', 'dark')">Dark</button>
+    <button type="button" onclick="DstoreChat('theme', 'light')">Light</button>
+    <span>Developer može isto staviti <code>data-theme="light"</code> na script.</span>
+</div>
+
+<script src="/public/embed.js"
+        data-endpoint="/endpoint/chat.php"
+        data-title="Digitalis AI asistent"
+        data-logo="/public/logo-digitalis.svg"
+        data-theme="dark"
+        data-webshop="digitalis"
+        defer></script>
+
+</body>
+</html>

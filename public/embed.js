@@ -19,6 +19,7 @@
  *   data-title     header text                (default "D-Store pomoć")
  *   data-greeting  first message
  *   data-color     accent colour              (default #f26529)
+ *   data-theme     "dark" | "light"           (default dark)
  *   data-position  "right" | "left"           (default right)
  *   data-currency  price suffix               (default KM)
  *   data-logo      URL of a logo image, used as the message avatar instead
@@ -86,12 +87,18 @@
     }
 
     var contactPreset = attr('data-contact-preset', '');
+    function normalizeTheme(theme) {
+        theme = String(theme || '').toLowerCase();
+        return theme === 'light' ? 'light' : 'dark';
+    }
+
     var CFG = {
         endpoint: attr('data-endpoint', '/endpoint/chat.php'),
         title:    attr('data-title', 'Dstore AI asistent'),
         greeting: attr('data-greeting',
             'Zdravo! Mogu pomoći oko proizvoda, cijena, dostave i garancije. Šta vas zanima?'),
         color:    attr('data-color', '#f26529'),
+        theme:    normalizeTheme(attr('data-theme', 'dark')),
         position: attr('data-position', 'right') === 'left' ? 'left' : 'right',
         currency: attr('data-currency', 'KM'),
         logo:     attr('data-logo', ''),
@@ -152,10 +159,20 @@
                 shadowHost.style.setProperty('--accent', CFG.color);
             }
         }
+        if (payload.theme) {
+            setTheme(payload.theme);
+        }
         if (payload.logo) {
             // addMessage() reads CFG.logo fresh on every render, so this
             // takes effect on the next message with no further work.
             CFG.logo = payload.logo;
+        }
+    }
+
+    function setTheme(theme) {
+        CFG.theme = normalizeTheme(theme);
+        if (shadowHost) {
+            shadowHost.setAttribute('data-theme', CFG.theme);
         }
     }
 
@@ -298,6 +315,8 @@
                 applyIdentify(payload || {});
             } else if (cmd === 'product' || cmd === 'setProduct') {
                 applyProduct(payload || {});
+            } else if (cmd === 'theme' || cmd === 'setTheme') {
+                setTheme(payload);
             } else if (cmd === 'debug') {
                 return {
                     webshop: CFG.webshop,
@@ -315,7 +334,8 @@
                         whatsapp: CFG.whatsapp,
                         viber: CFG.viber,
                         messenger: CFG.messenger
-                    }
+                    },
+                    theme: CFG.theme
                 };
             }
         };
@@ -332,6 +352,9 @@
     });
     window.addEventListener('falcomchat:product', function (e) {
         applyProduct(e.detail || {});
+    });
+    window.addEventListener('dstorechat:theme', function (e) {
+        setTheme(e.detail || '');
     });
     window.addEventListener('dstorechat:identify', function (e) {
         applyIdentify(e.detail || {});
@@ -433,6 +456,14 @@
         '  all: initial;',
         '  --bg: #17181c; --bubble: #23252b; --surface: #1f2126; --surface2: #26282f;',
         '  --border: #2e3138; --text: #e9e9ec; --muted: #9a9da6;',
+        '  --error-bg: #3a1f22; --error-text: #f87171; --error-border: #5c2a2e;',
+        '  --shadow: 0 12px 40px rgba(0,0,0,.18); --soft-shadow: 0 1px 2px rgba(0,0,0,.3);',
+        '}',
+        ':host([data-theme="light"]) {',
+        '  --bg: #ffffff; --bubble: #f3f4f6; --surface: #ffffff; --surface2: #f8fafc;',
+        '  --border: #d8dee8; --text: #111827; --muted: #6b7280;',
+        '  --error-bg: #fff1f2; --error-text: #b91c1c; --error-border: #fecdd3;',
+        '  --shadow: 0 18px 45px rgba(15,23,42,.18); --soft-shadow: 0 1px 2px rgba(15,23,42,.08);',
         '}',
         '*, *::before, *::after { box-sizing: border-box; }',
         '.wrap {',
@@ -483,7 +514,7 @@
         '  max-width: calc(100vw - 32px); height: 640px;',
         '  max-height: calc(100vh - 96px); background: var(--bg);',
         '  border: 1px solid var(--border); border-radius: 12px;',
-        '  box-shadow: 0 12px 40px rgba(0,0,0,.18);',
+        '  box-shadow: var(--shadow);',
         '  display: flex; flex-direction: column; overflow: hidden;',
         '  transition: width .18s ease, height .18s ease, opacity .18s ease, transform .2s cubic-bezier(.2,.9,.3,1.2);',
         '  transform-origin: bottom right;',
@@ -540,7 +571,7 @@
         '.mrow.bot, .mrow.err { align-self: flex-start; }',
         '.avatar {',
         '  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;',
-        '  background: var(--bg); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,.3);',
+        '  background: var(--bg); border: 1px solid var(--border); box-shadow: var(--soft-shadow);',
         '  display: flex; align-items: center; justify-content: center; overflow: hidden;',
         '}',
         '.avatar svg { width: 20px; height: 20px; }',
@@ -554,7 +585,7 @@
         '.m.bot  { background: var(--bubble); border-bottom-left-radius: 4px; }',
         '.m.product-detail { width: 100%; }',
         '.m.user { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }',
-        '.m.err  { background: #3a1f22; color: #f87171; border: 1px solid #5c2a2e; font-size: 14px; }',
+        '.m.err  { background: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); font-size: 14px; }',
         '.typing {',
         '  align-self: flex-start; background: var(--bubble); border-radius: 12px;',
         '  border-bottom-left-radius: 4px; padding: 12px 14px; display: flex; gap: 4px;',
@@ -1009,6 +1040,7 @@
     function build() {
         var host = document.createElement('div');
         host.setAttribute('data-dstore-chat', '');
+        host.setAttribute('data-theme', CFG.theme);
         shadowHost = host;
         var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
 
