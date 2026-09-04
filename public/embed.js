@@ -832,6 +832,17 @@
         return 'dstore_chat_transcript:' + (CFG.webshop || 'default') + ':' + (vid || 'anon');
     }
 
+    function saveTranscriptNow() {
+        if (restoringTranscript || !els.msgs) {
+            return;
+        }
+        try {
+            window.localStorage.setItem(transcriptKey(), els.msgs.innerHTML);
+        } catch (e) {
+            // Storage can be disabled; the backend history still works.
+        }
+    }
+
     function saveTranscriptSoon() {
         if (restoringTranscript || !els.msgs) {
             return;
@@ -840,11 +851,7 @@
             window.clearTimeout(transcriptSaveTimer);
         }
         transcriptSaveTimer = window.setTimeout(function () {
-            try {
-                window.localStorage.setItem(transcriptKey(), els.msgs.innerHTML);
-            } catch (e) {
-                // Storage can be disabled; the backend history still works.
-            }
+            saveTranscriptNow();
         }, 50);
     }
 
@@ -1994,6 +2001,7 @@
     function send(text, extraBody) {
         userTurns++;
         addMessage(text, 'user');
+        saveTranscriptNow();
         busy = true;
         els.send.disabled = true;
         var typing = showTyping();
@@ -2029,15 +2037,19 @@
                     if (contactTextMentionsChannels(text) || contactTextMentionsChannels(data.reply)) {
                         addHumanContactOptions(true);
                     }
+                    saveTranscriptNow();
                 } else if (data && data.error) {
                     addMessage(data.error, 'err');
+                    saveTranscriptNow();
                 } else {
                     addMessage(TEXT.genError, 'err');
+                    saveTranscriptNow();
                 }
             })
             .catch(function () {
                 typing.remove();
                 addMessage(TEXT.netError, 'err');
+                saveTranscriptNow();
             })
             .then(function () {
                 busy = false;
@@ -2174,6 +2186,13 @@
         els.input.addEventListener('input', function () {
             els.input.style.height = 'auto';
             els.input.style.height = Math.min(els.input.scrollHeight, 110) + 'px';
+        });
+
+        window.addEventListener('pagehide', saveTranscriptNow);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                saveTranscriptNow();
+            }
         });
     }
 
