@@ -2200,6 +2200,16 @@ class ProductSearch
             return $this->findBucketEntry($map, 'supercategory', 'Audio', null);
         }
 
+        if (
+            preg_match('/\b(?:bicik\w*|e\s*bike|ebike)\b/u', $norm)
+            && !preg_match('/\b(?:lego|igrack\w*|igrac\w*|kock\w*|city|kaskader\w*|raket\w*)\b/u', $norm)
+        ) {
+            // Natural "bicikala/bicikle na prodaju" questions should mean
+            // real bikes/e-bikes, not LEGO toy sets that happen to contain
+            // the same word in the product name.
+            return $this->findBucketEntry($map, 'subcategory', 'eBike', 'Bicikli');
+        }
+
         if (preg_match('/\b(?:hdmi)\b/u', $norm)) {
             if (preg_match('/\b(?:razdjelnik\w*|razdelnik\w*|splitter\w*)\b/u', $norm)) {
                 return $this->findBucketEntry($map, 'subcategory', 'HDMI razdjelnici', 'HDMI & Video');
@@ -2684,7 +2694,7 @@ class ProductSearch
             // "elektricni" (correctly spelled) is not even a name_text
             // prefix match for it, and "bicikl" sits 3rd word regardless.
             // Found 2026-08-27.
-            $norm = preg_replace('/\b(?:bicikl\w*|elektricn\w*|gradsk\w*)\b/u', ' ', $norm);
+            $norm = preg_replace('/\b(?:bicik\w*|elektricn\w*|gradsk\w*)\b/u', ' ', $norm);
         } elseif ($name === 'video nadzor ip') {
             // A whole category (cameras, recorders, cabling...), so a
             // generic "video nadzor"/"sistem video nadzora" (no specific
@@ -3652,7 +3662,10 @@ class ProductSearch
             // then matched Električni romobili (scooters) instead - a
             // different, wrong product a customer asking for a bike does
             // not want.
-            'ebike' => ['bicikl', 'bicikla', 'biciklu', 'elektricni bicikl', 'bicikl elektricni', 'gradski bicikl', 'elektricni bicikl gradski'],
+            // Include common plural/genitive forms too. Without "bicikala",
+            // "imate li bicikala na prodaju" fell through to raw product
+            // matching and returned a LEGO toy whose name contains "bicikl".
+            'ebike' => ['bicikl', 'bicikla', 'bicikle', 'biciklu', 'bicikala', 'biciklima', 'elektricni bicikl', 'elektricni bicikli', 'bicikl elektricni', 'bicikli elektricni', 'gradski bicikl', 'gradski bicikli', 'elektricni bicikl gradski'],
             // Found 2026-08-27, systematic sweep of remaining compound
             // buckets: "vezica"/"obujmica" (cable tie/clamp) alone never
             // matched this bucket's own combined name.
