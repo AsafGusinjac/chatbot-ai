@@ -23,6 +23,9 @@ class ConversationStore
     /** @var bool|null */
     private $selectedProductIdSupported = null;
 
+    /** @var array<string,bool> */
+    private $metadataColumns = [];
+
     /** @param PDO $pdo */
     public function __construct(PDO $pdo)
     {
@@ -321,6 +324,58 @@ class ConversationStore
     }
 
     /**
+     * Best-effort per-conversation metadata for debugging/admin filters.
+     * Older cPanel deployments get the columns lazily when traffic arrives.
+     *
+     * @param int   $conversationId
+     * @param array $metadata
+     * @return void
+     */
+    public function setMetadata($conversationId, array $metadata)
+    {
+        $allowed = [
+            'webshop' => "VARCHAR(32) NOT NULL DEFAULT ''",
+            'client_ip' => "VARCHAR(64) NOT NULL DEFAULT ''",
+            'customer_id' => "VARCHAR(191) NOT NULL DEFAULT ''",
+            'customer_name' => "VARCHAR(191) NOT NULL DEFAULT ''",
+            'wholesale_hint' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        ];
+
+        $sets = [];
+        $params = [];
+        foreach ($allowed as $column => $definition) {
+            if (!array_key_exists($column, $metadata) || !$this->supportsMetadataColumn($column, $definition)) {
+                continue;
+            }
+
+            $value = $metadata[$column];
+            if ($column === 'wholesale_hint') {
+                $value = !empty($value) ? 1 : 0;
+            } else {
+                $value = trim((string) $value);
+                $max = $column === 'client_ip' ? 64 : ($column === 'webshop' ? 32 : 191);
+                if (mb_strlen($value) > $max) {
+                    $value = mb_substr($value, 0, $max);
+                }
+            }
+
+            if ($value === '' && in_array($column, ['webshop', 'client_ip', 'customer_id', 'customer_name'], true)) {
+                continue;
+            }
+
+            $sets[] = "`{$column}` = ?";
+            $params[] = $value;
+        }
+
+        if ($sets === []) {
+            return;
+        }
+
+        $params[] = (int) $conversationId;
+        $this->pdo->prepare('UPDATE conversations SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
+    }
+
+    /**
      * @return bool
      */
     private function supportsLastProductIds()
@@ -369,6 +424,57 @@ class ConversationStore
             error_log('ConversationStore: selected_product_id unavailable — ' . $e->getMessage());
             $this->selectedProductIdSupported = false;
             return false;
+        }
+    }
+
+    /**
+     * @param string $column
+     * @param string $definition
+     * @return bool
+     */
+    private function supportsMetadataColumn($column, $definition)
+    {
+        if (isset($this->metadataColumns[$column])) {
+            return $this->metadataColumns[$column];
+        }
+
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM conversations LIKE " . $this->pdo->quote($column));
+            if ($stmt !== false && $stmt->fetch() !== false) {
+                $this->metadataColumns[$column] = true;
+                return true;
+            }
+
+            $this->pdo->exec("ALTER TABLE conversations ADD COLUMN `{$column}` {$definition}");
+            if ($column === 'webshop') {
+                $this->ensureConversationIndex('idx_webshop', 'webshop');
+            } elseif ($column === 'client_ip') {
+                $this->ensureConversationIndex('idx_client_ip', 'client_ip');
+            }
+            $this->metadataColumns[$column] = true;
+            return true;
+        } catch (Exception $e) {
+            error_log('ConversationStore: metadata column unavailable — ' . $column . ' — ' . $e->getMessage());
+            $this->metadataColumns[$column] = false;
+            return false;
+        }
+    }
+
+    /**
+     * @param string $index
+     * @param string $column
+     * @return void
+     */
+    private function ensureConversationIndex($index, $column)
+    {
+        try {
+            $stmt = $this->pdo->query("SHOW INDEX FROM conversations WHERE Key_name = " . $this->pdo->quote($index));
+            if ($stmt !== false && $stmt->fetch() !== false) {
+                return;
+            }
+            $this->pdo->exec("ALTER TABLE conversations ADD KEY `{$index}` (`{$column}`)");
+        } catch (Exception $e) {
+            error_log('ConversationStore: metadata index unavailable — ' . $index . ' — ' . $e->getMessage());
         }
     }
 }

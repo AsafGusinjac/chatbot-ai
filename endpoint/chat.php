@@ -143,16 +143,16 @@ if (empty($input['reset'])) {
     enforceRateLimit(
         __DIR__ . '/../data/ratelimit/burst',
         $rateKey,
-        (int) config_get('burst_rate_limit_max', 6),
-        (int) config_get('burst_rate_limit_window', 60),
+        rateLimitValueForIp($clientIp, 'burst_rate_limit_max', (int) config_get('burst_rate_limit_max', 6)),
+        rateLimitValueForIp($clientIp, 'burst_rate_limit_window', (int) config_get('burst_rate_limit_window', 60)),
         'Šaljete poruke prebrzo. Sačekajte malo pa pokušajte ponovo.'
     );
 
     enforceRateLimit(
         __DIR__ . '/../data/ratelimit/window',
         $rateKey,
-        (int) config_get('rate_limit_max', 20),
-        (int) config_get('rate_limit_window', 300),
+        rateLimitValueForIp($clientIp, 'rate_limit_max', (int) config_get('rate_limit_max', 20)),
+        rateLimitValueForIp($clientIp, 'rate_limit_window', (int) config_get('rate_limit_window', 300)),
         'Poslali ste dosta poruka. Sačekajte malo pa pokušajte ponovo.'
     );
 
@@ -160,16 +160,16 @@ if (empty($input['reset'])) {
         enforceRateLimit(
             __DIR__ . '/../data/ratelimit/visitor',
             $visitorRateKey,
-            (int) config_get('visitor_daily_limit', 80),
-            (int) config_get('visitor_daily_window', 86400),
+            rateLimitValueForIp($clientIp, 'visitor_daily_limit', (int) config_get('visitor_daily_limit', 80)),
+            rateLimitValueForIp($clientIp, 'visitor_daily_window', (int) config_get('visitor_daily_window', 86400)),
             'Dostigli ste dnevni limit poruka za ovaj chat. Pokušajte ponovo kasnije.'
         );
 
         enforceRateLimit(
             __DIR__ . '/../data/ratelimit/daily',
             $rateKey,
-            (int) config_get('ip_daily_limit', 120),
-            (int) config_get('ip_daily_window', 86400),
+            rateLimitValueForIp($clientIp, 'ip_daily_limit', (int) config_get('ip_daily_limit', 120)),
+            rateLimitValueForIp($clientIp, 'ip_daily_window', (int) config_get('ip_daily_window', 86400)),
             'Dostigli ste dnevni limit poruka. Pokušajte ponovo kasnije ili nas kontaktirajte telefonom.'
         );
 
@@ -262,6 +262,8 @@ $visitor = [
     'product_name'       => isset($input['product_name']) ? (string) $input['product_name'] : '',
     'product_url'        => isset($input['product_url']) ? (string) $input['product_url'] : '',
     'product_action'     => isset($input['product_action']) ? (string) $input['product_action'] : '',
+    'webshop'            => isset($input['webshop']) ? (string) $input['webshop'] : '',
+    'client_ip'          => $clientIp,
 ];
 
 try {
@@ -528,6 +530,34 @@ function enforceRateLimit($dir, $key, $max, $window, $message)
     if (!$limiter->allow($key)) {
         Http::send(['error' => $message], 429);
     }
+}
+
+/**
+ * Let trusted tester IPs use much looser limits without weakening protection
+ * for normal public traffic.
+ *
+ * config:
+ * 'ip_rate_limit_overrides' => [
+ *     '77.78.207.53' => ['ai_user_daily_limit' => 200, ...],
+ * ],
+ *
+ * @param string $ip
+ * @param string $key
+ * @param int    $default
+ * @return int
+ */
+function rateLimitValueForIp($ip, $key, $default)
+{
+    $overrides = config_get('ip_rate_limit_overrides', []);
+    if (!is_array($overrides) || !isset($overrides[$ip]) || !is_array($overrides[$ip])) {
+        return (int) $default;
+    }
+
+    if (!array_key_exists($key, $overrides[$ip])) {
+        return (int) $default;
+    }
+
+    return (int) $overrides[$ip][$key];
 }
 
 /**

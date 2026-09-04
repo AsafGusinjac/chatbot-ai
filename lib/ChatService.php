@@ -70,6 +70,12 @@ class ChatService
      */
     private $customerId = '';
 
+    /** @var string */
+    private $webshopKey = '';
+
+    /** @var string */
+    private $clientIp = '';
+
     /**
      * Product page the visitor currently has open, supplied by the host site
      * through DstoreChat('product', ...). Used only as context; the visitor's
@@ -238,10 +244,19 @@ class ChatService
         $this->wholesaleVerified  = !empty($visitor['wholesale_verified']);
         $this->customerName       = isset($visitor['customer_name']) ? trim((string) $visitor['customer_name']) : '';
         $this->customerId         = isset($visitor['customer_id']) ? trim((string) $visitor['customer_id']) : '';
+        $this->webshopKey         = isset($visitor['webshop']) ? strtolower(trim((string) $visitor['webshop'])) : '';
+        $this->clientIp           = isset($visitor['client_ip']) ? trim((string) $visitor['client_ip']) : '';
         $this->currentPageProduct = $this->sanitizePageProduct($visitor);
         $this->currentProductAction = $this->sanitizeProductAction(isset($visitor['product_action']) ? (string) $visitor['product_action'] : '');
 
         $conversationId = $this->store->getOrCreate($channel, $userId);
+        $this->store->setMetadata($conversationId, [
+            'webshop' => $this->webshopKey,
+            'client_ip' => $this->clientIp,
+            'customer_id' => $this->customerId,
+            'customer_name' => $this->customerName,
+            'wholesale_hint' => $this->wholesaleVerified ? 1 : 0,
+        ]);
         if ($this->currentPageProduct !== null && $this->currentPageProduct['id'] > 0) {
             $this->store->setSelectedProductId($conversationId, $this->currentPageProduct['id']);
         }
@@ -651,6 +666,8 @@ class ChatService
      */
     private function logAiUsage($channel, $userId, $message, array $result, $durationSeconds)
     {
+        $this->storeTurnLog($channel, $userId, $message, $result, $durationSeconds);
+
         $dir = __DIR__ . '/../logs';
         if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
             return;
@@ -659,6 +676,8 @@ class ChatService
         $entry = [
             'ts'              => date('c'),
             'site'            => rtrim((string) config_get('shop_base_url', ''), '/'),
+            'webshop'         => $this->webshopKey,
+            'client_ip'       => $this->clientIp,
             'channel'         => (string) $channel,
             'user_id'         => (string) $userId,
             'conversation_id' => isset($result['conversation_id']) ? $result['conversation_id'] : null,
@@ -676,6 +695,78 @@ class ChatService
         }
 
         @file_put_contents($dir . '/ai_usage.log', $line . "\n", FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * @param string $channel
+     * @param string $userId
+     * @param string $message
+     * @param array  $result
+     * @param float  $durationSeconds
+     * @return void
+     */
+    private function storeTurnLog($channel, $userId, $message, array $result, $durationSeconds)
+    {
+        try {
+            $this->ensureTurnLogTable();
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO chat_turn_logs
+                    (conversation_id, channel, external_id, webshop, client_ip,
+                     customer_id, customer_name, wholesale_hint, path, model,
+                     duration_ms, products_count, user_message, assistant_reply)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                isset($result['conversation_id']) ? (int) $result['conversation_id'] : null,
+                (string) $channel,
+                (string) $userId,
+                $this->webshopKey,
+                $this->clientIp,
+                $this->customerId,
+                $this->customerName,
+                $this->wholesaleVerified ? 1 : 0,
+                $this->lastPathUsed,
+                $this->lastModelUsed,
+                (int) round($durationSeconds * 1000),
+                isset($result['products']) ? count($result['products']) : 0,
+                mb_substr((string) $message, 0, 2000),
+                mb_substr((string) (isset($result['reply']) ? $result['reply'] : ''), 0, 4000),
+            ]);
+        } catch (Exception $e) {
+            error_log('ChatService: turn log unavailable — ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * @return void
+     */
+    private function ensureTurnLogTable()
+    {
+        $this->pdo->exec(
+            "CREATE TABLE IF NOT EXISTS chat_turn_logs (
+                id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                conversation_id BIGINT UNSIGNED NULL,
+                channel         VARCHAR(32) NOT NULL DEFAULT '',
+                external_id     VARCHAR(191) NOT NULL DEFAULT '',
+                webshop         VARCHAR(32) NOT NULL DEFAULT '',
+                client_ip       VARCHAR(64) NOT NULL DEFAULT '',
+                customer_id     VARCHAR(191) NOT NULL DEFAULT '',
+                customer_name   VARCHAR(191) NOT NULL DEFAULT '',
+                wholesale_hint  TINYINT(1) NOT NULL DEFAULT 0,
+                path            VARCHAR(32) NOT NULL DEFAULT '',
+                model           VARCHAR(128) NULL,
+                duration_ms     INT UNSIGNED NOT NULL DEFAULT 0,
+                products_count  INT UNSIGNED NOT NULL DEFAULT 0,
+                user_message    TEXT NOT NULL,
+                assistant_reply MEDIUMTEXT NOT NULL,
+                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_conversation (conversation_id),
+                KEY idx_created (created_at),
+                KEY idx_webshop (webshop),
+                KEY idx_path (path),
+                KEY idx_client_ip (client_ip)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
     }
 
     /**
@@ -798,8 +889,8 @@ class ChatService
 
         $perUser = new RateLimiter(
             $dir . '/user',
-            (int) config_get('ai_user_daily_limit', 30),
-            (int) config_get('ai_user_daily_window', 86400)
+            $this->rateLimitValueForClientIp('ai_user_daily_limit', (int) config_get('ai_user_daily_limit', 30)),
+            $this->rateLimitValueForClientIp('ai_user_daily_window', (int) config_get('ai_user_daily_window', 86400))
         );
         if (!$perUser->allow('ai:user:' . $channel . ':' . $userId)) {
             return 'Dostigli ste dnevni limit za AI odgovore u ovom chatu. '
@@ -809,8 +900,8 @@ class ChatService
 
         $global = new RateLimiter(
             $dir . '/global',
-            (int) config_get('ai_global_daily_limit', 500),
-            (int) config_get('ai_global_daily_window', 86400)
+            $this->rateLimitValueForClientIp('ai_global_daily_limit', (int) config_get('ai_global_daily_limit', 500)),
+            $this->rateLimitValueForClientIp('ai_global_daily_window', (int) config_get('ai_global_daily_window', 86400))
         );
         if (!$global->allow('ai:global:' . date('Y-m-d'))) {
             return 'Chat je trenutno preopterećen. Pokušajte ponovo kasnije ili nas kontaktirajte na '
@@ -818,6 +909,24 @@ class ChatService
         }
 
         return null;
+    }
+
+    /**
+     * @param string $key
+     * @param int    $default
+     * @return int
+     */
+    private function rateLimitValueForClientIp($key, $default)
+    {
+        $overrides = config_get('ip_rate_limit_overrides', []);
+        if ($this->clientIp === '' || !is_array($overrides) || !isset($overrides[$this->clientIp]) || !is_array($overrides[$this->clientIp])) {
+            return (int) $default;
+        }
+        if (!array_key_exists($key, $overrides[$this->clientIp])) {
+            return (int) $default;
+        }
+
+        return (int) $overrides[$this->clientIp][$key];
     }
 
     /**

@@ -133,8 +133,15 @@ CREATE TABLE IF NOT EXISTS conversations (
     last_message_at TIMESTAMP    NULL,
     last_product_ids TEXT         NULL,
     selected_product_id INT UNSIGNED NULL,
+    webshop         VARCHAR(32)  NOT NULL DEFAULT '',
+    client_ip       VARCHAR(64)  NOT NULL DEFAULT '',
+    customer_id     VARCHAR(191) NOT NULL DEFAULT '',
+    customer_name   VARCHAR(191) NOT NULL DEFAULT '',
+    wholesale_hint  TINYINT(1)   NOT NULL DEFAULT 0,
     UNIQUE KEY uniq_channel_user (channel, external_id),
-    KEY idx_last (last_message_at)
+    KEY idx_last (last_message_at),
+    KEY idx_webshop (webshop),
+    KEY idx_client_ip (client_ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -147,6 +154,33 @@ CREATE TABLE IF NOT EXISTS messages (
     CONSTRAINT fk_messages_conversation
         FOREIGN KEY (conversation_id) REFERENCES conversations(id)
         ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS chat_turn_logs (
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    conversation_id BIGINT UNSIGNED NULL,
+    channel         VARCHAR(32)  NOT NULL DEFAULT '',
+    external_id     VARCHAR(191) NOT NULL DEFAULT '',
+    webshop         VARCHAR(32)  NOT NULL DEFAULT '',
+    client_ip       VARCHAR(64)  NOT NULL DEFAULT '',
+    customer_id     VARCHAR(191) NOT NULL DEFAULT '',
+    customer_name   VARCHAR(191) NOT NULL DEFAULT '',
+    wholesale_hint  TINYINT(1)   NOT NULL DEFAULT 0,
+    path            VARCHAR(32)  NOT NULL DEFAULT '',
+    model           VARCHAR(128) NULL,
+    duration_ms     INT UNSIGNED NOT NULL DEFAULT 0,
+    products_count  INT UNSIGNED NOT NULL DEFAULT 0,
+    user_message    TEXT NOT NULL,
+    assistant_reply MEDIUMTEXT NOT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_conversation (conversation_id),
+    KEY idx_created (created_at),
+    KEY idx_webshop (webshop),
+    KEY idx_path (path),
+    KEY idx_client_ip (client_ip),
+    CONSTRAINT fk_turn_logs_conversation
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS conversation_feedback (

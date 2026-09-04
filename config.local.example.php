@@ -87,6 +87,25 @@ return [
     // 'trusted_proxies'    => [],     // your reverse proxy IPs, if any
     // 'debug_errors'       => false,  // true = show real errors in responses.
     //                                 // NEVER true in production.
+    // Admin dashboard: /chatbot/admin/conversations.php?token=...
+    // Generate a long random value and keep it private.
+    // 'admin_token' => '',
+    // Optional: allow dashboard from trusted office/test IPs without token.
+    // 'admin_allowed_ips' => ['77.78.207.53'],
+    // Let a trusted tester IP run deeper tests while public visitors keep the
+    // normal limits above.
+    // 'ip_rate_limit_overrides' => [
+    //     '77.78.207.53' => [
+    //         'burst_rate_limit_max' => 200,
+    //         'burst_rate_limit_window' => 60,
+    //         'rate_limit_max' => 500,
+    //         'rate_limit_window' => 300,
+    //         'visitor_daily_limit' => 2000,
+    //         'ip_daily_limit' => 3000,
+    //         'ai_user_daily_limit' => 200,
+    //         'ai_global_daily_limit' => 1000,
+    //     ],
+    // ],
     // 'shop_base_url'      => 'https://www.digitalis.ba',
     // 'image_base_url'     => 'https://www.digitalis.ba',
     // 'brand_image_base_url' => 'https://www.digitalis.ba',
