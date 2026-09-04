@@ -714,6 +714,12 @@
         '  transition: border-color .15s ease, transform .15s ease; scroll-snap-align: start;',
         '}',
         '.card:hover { border-color: var(--accent); transform: translateY(-1px); }',
+        '.cards.single-card { cursor: default; overflow: visible; padding-right: 0; }',
+        '.cards.single-card .card { flex: 1 1 100%; width: 100%; min-width: 0; gap: 11px; padding: 10px; }',
+        '.cards.single-card .card img, .cards.single-card .card .ph { width: 76px; height: 76px; }',
+        '.cards.single-card .card .nm { font-size: 13px; -webkit-line-clamp: 2; }',
+        '.cards.single-card .card .row { gap: 8px; }',
+        '.cards.single-card .card .buy { flex-basis: 44px; width: 44px; }',
         '.card img {',
         '  width: 66px; height: 66px; object-fit: contain; flex-shrink: 0;',
         '  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;',
@@ -795,6 +801,7 @@
         '  .mrow.product-detail-row, .mrow.cart-action-row { width: 96%; max-width: 96%; }',
         '  .brand-card { flex-basis: 82%; width: 82%; min-width: 82%; }',
         '  .card { gap: 9px; padding: 9px; }',
+        '  .cards.single-card .card { gap: 9px; padding: 9px; }',
         '  .card img { width: 74px; height: 74px; }',
         '  .card .ph { width: 74px; height: 74px; }',
         '  .card .row { gap: 6px; }',
@@ -1709,6 +1716,9 @@
     function renderCards(products, parent) {
         var wrap = document.createElement('div');
         wrap.className = 'cards';
+        if (products.length === 1) {
+            wrap.className += ' single-card';
+        }
 
         products.forEach(function (p) {
             var card = document.createElement('div');
