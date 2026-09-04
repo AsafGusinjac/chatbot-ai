@@ -414,15 +414,19 @@
     width: 88px;
     height: 88px;
     flex-shrink: 0;
-    background: var(--dsc-surface2);
+    background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015));
     border: 1px solid var(--dsc-border);
     border-radius: 8px;
-    color: var(--dsc-accent);
+    color: var(--dsc-muted);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
-    font-weight: 800;
+    text-align: center;
+    padding: 7px;
+    font-size: 10px;
+    line-height: 1.15;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
 }
 
 .dsc-img-link { flex-shrink: 0; }

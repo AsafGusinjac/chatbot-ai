@@ -717,6 +717,7 @@
         '.cards.single-card { cursor: default; overflow: visible; padding-right: 0; }',
         '.cards.single-card .card { flex: 1 1 100%; width: 100%; min-width: 0; gap: 11px; padding: 10px; }',
         '.cards.single-card .card img, .cards.single-card .card .ph { width: 76px; height: 76px; }',
+        '.cards.single-card .card .ph { font-size: 10px; }',
         '.cards.single-card .card .nm { font-size: 13px; -webkit-line-clamp: 2; }',
         '.cards.single-card .card .row { gap: 8px; }',
         '.cards.single-card .card .buy { flex-basis: 44px; width: 44px; }',
@@ -726,8 +727,10 @@
         '}',
         '.card .ph {',
         '  width: 66px; height: 66px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;',
-        '  background: var(--surface2); color: var(--accent); display: flex; align-items: center; justify-content: center;',
-        '  font-size: 18px; font-weight: 800;',
+        '  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)); color: var(--muted);',
+        '  display: flex; align-items: center; justify-content: center; text-align: center;',
+        '  padding: 6px; font-size: 9.5px; line-height: 1.15; font-weight: 700;',
+        '  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);',
         '}',
         '.card .img-link { flex-shrink: 0; }',
         '.card .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }',
@@ -1733,7 +1736,7 @@
 
             var fallback = document.createElement('div');
             fallback.className = 'ph';
-            fallback.textContent = String(p.brand || p.name || '?').charAt(0).toUpperCase();
+            fallback.textContent = 'Nema slike';
 
             if (p.image) {
                 var img = document.createElement('img');

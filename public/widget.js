@@ -666,7 +666,7 @@
 
             var fallback = document.createElement('div');
             fallback.className = 'dsc-card-placeholder';
-            fallback.textContent = String(p.brand || p.name || '?').charAt(0).toUpperCase();
+            fallback.textContent = 'Nema slike';
 
             if (p.image) {
                 var img = document.createElement('img');
