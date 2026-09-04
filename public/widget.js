@@ -19,8 +19,7 @@
         closeAria:    'Close chat',
         resetLabel:   'New chat',
         resetAria:    'Start a new conversation',
-        expandAria:   'Expand chat window',
-        collapseAria: 'Shrink chat window',
+        minimizeAria: 'Minimize chat',
         placeholder:  'Ask a question…',
         send:         'Send',
         greeting:     'Hi! I can help with questions about dstore — delivery, returns, payment and more. What can I do for you?',
@@ -67,6 +66,7 @@
         + '</svg>';
     var ICON_EXPAND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm16 0v6h-6v-2h4v-4h2z"/></svg>';
     var ICON_COLLAPSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h2v6H5V7h4V3zm6 0h2v4h4v2h-6V3zM5 15h6v6H9v-4H5v-2zm10 6v-6h6v2h-4v4h-2z"/></svg>';
+    var ICON_MINIMIZE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></svg>';
 
     // Launcher icon swaps between the chat bubble (closed) and an X
     // (open) - the standard pattern for a chat widget toggle button.
@@ -171,13 +171,12 @@
         var actions = document.createElement('div');
         actions.className = 'dsc-header-actions';
 
-        var expandBtn = document.createElement('button');
-        expandBtn.type = 'button';
-        expandBtn.className = 'dsc-icon-btn dsc-icon-btn-expand';
-        expandBtn.innerHTML = ICON_EXPAND;
-        expandBtn.title = TEXT.expandAria;
-        expandBtn.setAttribute('aria-label', TEXT.expandAria);
-        expandBtn.setAttribute('aria-pressed', 'false');
+        var minimizeBtn = document.createElement('button');
+        minimizeBtn.type = 'button';
+        minimizeBtn.className = 'dsc-icon-btn dsc-icon-btn-minimize';
+        minimizeBtn.innerHTML = ICON_MINIMIZE;
+        minimizeBtn.title = TEXT.minimizeAria;
+        minimizeBtn.setAttribute('aria-label', TEXT.minimizeAria);
 
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
@@ -193,7 +192,7 @@
         closeBtn.title = TEXT.closeAria;
         closeBtn.setAttribute('aria-label', TEXT.closeAria);
 
-        actions.appendChild(expandBtn);
+        actions.appendChild(minimizeBtn);
         actions.appendChild(resetBtn);
         actions.appendChild(closeBtn);
         header.appendChild(title);
@@ -243,7 +242,7 @@
             root: root, panel: panel, messages: messages,
             form: form, input: input, send: send,
             launcher: launcher, closeBtn: closeBtn, resetBtn: resetBtn,
-            expandBtn: expandBtn
+            minimizeBtn: minimizeBtn
         };
     }
 
@@ -934,14 +933,9 @@
         els.closeBtn.addEventListener('click', function () { close(); });
         els.resetBtn.addEventListener('click', reset);
 
-        els.expandBtn.addEventListener('click', function () {
-            var expanded = els.panel.classList.toggle('dsc-expanded');
-            els.expandBtn.innerHTML = expanded ? ICON_COLLAPSE : ICON_EXPAND;
-            var label = expanded ? TEXT.collapseAria : TEXT.expandAria;
-            els.expandBtn.title = label;
-            els.expandBtn.setAttribute('aria-label', label);
-            els.expandBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
-            scrollToEnd();
+        els.minimizeBtn.addEventListener('click', function () {
+            close(true);
+            els.launcher.focus();
         });
 
         els.form.addEventListener('submit', function (e) {

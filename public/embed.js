@@ -424,6 +424,7 @@
         + '</svg>';
     var ICON_EXPAND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm16 0v6h-6v-2h4v-4h2z"/></svg>';
     var ICON_COLLAPSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h2v6H5V7h4V3zm6 0h2v4h4v2h-6V3zM5 15h6v6H9v-4H5v-2zm10 6v-6h6v2h-4v4h-2z"/></svg>';
+    var ICON_MINIMIZE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></svg>';
     var ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
         + '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>';
     var ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
@@ -439,8 +440,7 @@
         close:        'Zatvori chat',
         reset:        'Novi razgovor',
         resetAria:    'Započni novi razgovor',
-        expandAria:   'Povećaj prozor chata',
-        collapseAria: 'Smanji prozor chata',
+        minimizeAria: 'Minimiziraj chat',
         placeholder:  'Postavite pitanje…',
         send:         'Pošalji',
         typing:       'Asistent piše',
@@ -1104,13 +1104,12 @@
         themeBtn.type = 'button';
         themeBtn.className = 'ibtn ibtn-theme';
 
-        var expandBtn = document.createElement('button');
-        expandBtn.type = 'button';
-        expandBtn.className = 'ibtn ibtn-expand';
-        expandBtn.innerHTML = ICON_EXPAND;
-        expandBtn.title = TEXT.expandAria;
-        expandBtn.setAttribute('aria-label', TEXT.expandAria);
-        expandBtn.setAttribute('aria-pressed', 'false');
+        var minimizeBtn = document.createElement('button');
+        minimizeBtn.type = 'button';
+        minimizeBtn.className = 'ibtn ibtn-minimize';
+        minimizeBtn.innerHTML = ICON_MINIMIZE;
+        minimizeBtn.title = TEXT.minimizeAria;
+        minimizeBtn.setAttribute('aria-label', TEXT.minimizeAria);
 
         var resetBtn = document.createElement('button');
         resetBtn.type = 'button';
@@ -1127,7 +1126,7 @@
         closeBtn.setAttribute('aria-label', TEXT.close);
 
         acts.appendChild(themeBtn);
-        acts.appendChild(expandBtn);
+        acts.appendChild(minimizeBtn);
         acts.appendChild(resetBtn);
         acts.appendChild(closeBtn);
         head.appendChild(t);
@@ -1178,7 +1177,7 @@
         els = {
             panel: panel, msgs: msgs, form: form, input: input,
             send: send, launcher: launcher, closeBtn: closeBtn, resetBtn: resetBtn,
-            expandBtn: expandBtn, themeBtn: themeBtn, teaser: teaser
+            minimizeBtn: minimizeBtn, themeBtn: themeBtn, teaser: teaser
         };
         updateThemeButton();
     }
@@ -2235,14 +2234,10 @@
             post({ reset: true, visitor_id: vid }).catch(function () {});
         });
 
-        els.expandBtn.addEventListener('click', function () {
-            var expanded = els.panel.classList.toggle('expanded');
-            els.expandBtn.innerHTML = expanded ? ICON_COLLAPSE : ICON_EXPAND;
-            var label = expanded ? TEXT.collapseAria : TEXT.expandAria;
-            els.expandBtn.title = label;
-            els.expandBtn.setAttribute('aria-label', label);
-            els.expandBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
-            els.msgs.scrollTop = els.msgs.scrollHeight;
+        els.minimizeBtn.addEventListener('click', function () {
+            userTouchedPanel = true;
+            closePanel(true);
+            els.launcher.focus();
         });
 
         els.form.addEventListener('submit', function (e) {
