@@ -2558,7 +2558,7 @@ class ProductSearch
             // sit 4th/5th once the hyphens split into words, well past the
             // first-two-words anchor check. Leaving them in as a search
             // token found nothing at all rather than browsing the bucket.
-            $norm = preg_replace('/\b(?:pojacivac\w*|signal\w*|wifi|access|point\w*)\b/u', ' ', $norm);
+            $norm = preg_replace('/\b(?:pojacivac\w*|signal\w*|wifi|anten\w*|access|point\w*)\b/u', ' ', $norm);
         } elseif ($name === 'strujni razdelnici') {
             // This bucket mixes plain plugs, sockets, adapters and switches
             // with the smart ones - stripping "smart"/"plug" to nothing
@@ -3541,7 +3541,7 @@ class ProductSearch
             // name is the compound "Access point / Extenderi", so
             // bucketKey() combining every word means the bare two-word
             // term alone never matches it, same gap as the synonyms below.
-            'access point extenderi' => ['access point', 'pojacivac signala', 'pojacivac wifi signala', 'pojacivac signala wifi', 'wifi extender', 'wifi repetitor', 'pojacivac wifi'],
+            'access point extenderi' => ['access point', 'pojacivac signala', 'pojacivac wifi signala', 'pojacivac signala wifi', 'wifi extender', 'wifi repetitor', 'pojacivac wifi', 'wifi antene', 'wifi antena', 'wi fi antene', 'wi fi antena', 'bezicne antene', 'bezicna antena'],
             // "Smart plug" (English) never appears in a product name here -
             // found 2026-08-26 matching Smartphones instead ("smart" alone
             // is a substring of both). Real products are "Pametna

@@ -1819,8 +1819,24 @@ class ChatService
             $labels[] = $option['label'];
         }
 
-        return 'Za "' . $category . '" imamo nekoliko brendova na stanju: ' . $this->formatOptionList($labels) . '. '
+        $displayCategory = $this->displayCategoryLabel($category);
+
+        return 'Za "' . $displayCategory . '" imamo nekoliko brendova na stanju: ' . $this->formatOptionList($labels) . '. '
             . 'Koji brend vas zanima?';
+    }
+
+    /**
+     * @param string $category
+     * @return string
+     */
+    private function displayCategoryLabel($category)
+    {
+        $norm = Text::normalize($category);
+        if ($norm === 'access point extenderi') {
+            return 'Wi-Fi opremu / extendere';
+        }
+
+        return (string) $category;
     }
 
     /**
@@ -2153,6 +2169,16 @@ class ChatService
         // word, but it is exactly the kind of catalog browse the local path
         // should answer with product cards.
         if ($this->search->hasBrandMention($message) && $this->search->hasProductBucketAfterBrandExtraction($message)) {
+            return true;
+        }
+
+        // Short noun-phrase catalog queries ("wifi antene", "gaming misevi",
+        // "mobilni printeri") often come without "imate li" or "pokaži".
+        // Route only clearly resolved 2-4 word product buckets locally so
+        // the widget can show real choices/cards instead of letting the AI
+        // write a text-only "shown below" answer with no UI payload.
+        $tokens = Text::meaningfulTokens($message);
+        if (count($tokens) >= 2 && count($tokens) <= 4 && $this->search->hasProductBucketForQuery($message)) {
             return true;
         }
 
