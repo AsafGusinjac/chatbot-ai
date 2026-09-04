@@ -36,6 +36,9 @@ class ProductSearch
     /** @var bool Whether the local products table has the new_product column. */
     private $newProductColumnAvailable = false;
 
+    /** @var bool Whether the local products table has the image_url column. */
+    private $imageColumnAvailable = false;
+
     /** @param PDO $pdo */
     public function __construct(PDO $pdo)
     {
@@ -43,6 +46,7 @@ class ProductSearch
         $this->actionColumnsAvailable = $this->ensureActionColumns();
         $this->visibilityColumnsAvailable = $this->ensureVisibilityColumns();
         $this->newProductColumnAvailable = $this->ensureNewProductColumn();
+        $this->imageColumnAvailable = $this->ensureImageColumn();
     }
 
     /**
@@ -4693,6 +4697,27 @@ class ProductSearch
     }
 
     /**
+     * Product image URL from the API feed. Same lazy migration pattern so
+     * older cPanel databases keep serving search while waiting for sync.
+     *
+     * @return bool
+     */
+    private function ensureImageColumn()
+    {
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM products LIKE 'image_url'");
+            if ($stmt !== false && $stmt->fetch() === false) {
+                $this->pdo->exec('ALTER TABLE products ADD COLUMN `image_url` VARCHAR(1024) NULL AFTER `description`');
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            error_log('ProductSearch: image_url column unavailable — ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * @param bool     $inStockOnly
      * @param int|null $supercategoryId
      * @param int|null $categoryId
@@ -4784,9 +4809,12 @@ class ProductSearch
         $newProduct = $this->newProductColumnAvailable
             ? ', p.new_product'
             : ', 0 AS new_product';
+        $image = $this->imageColumnAvailable
+            ? ', p.image_url'
+            : ', NULL AS image_url';
 
         return 'SELECT p.id, p.ean, p.model, p.name, p.description, p.head_word, p.brand_id,
-                       p.price, p.stock, p.warranty_months' . $action . $newProduct . ',
+                       p.price, p.stock, p.warranty_months' . $action . $newProduct . $image . ',
                        b.name  AS brand,
                        c.name  AS category,
                        sc.name AS subcategory' . $extra . '
@@ -4903,14 +4931,13 @@ class ProductSearch
 
         $shopBase = rtrim((string) config_get('shop_base_url', 'https://www.digitalis.ba'), '/');
         $ean      = (string) $row['ean'];
-
-        // Images are not in the product feed, but the Digitalis catalog serves
-        // predictable EAN-based images at /slike/Pre/{EAN}_small.png. In the
-        // hosted-widget setup this PHP can live on falcom.ba while the catalog
-        // images live on the storefront/API domain, so do not default images to
-        // this server's public URL.
+        $image    = isset($row['image_url']) && trim((string) $row['image_url']) !== ''
+            ? (string) $row['image_url']
+            : null;
         $imageBase = rtrim((string) config_get('image_base_url', $this->defaultImageBase()), '/');
-        $image = ($ean !== '') ? $imageBase . '/slike/Pre/' . rawurlencode($ean) . '_small.png' : null;
+        if ($image === null && $ean !== '') {
+            $image = $imageBase . '/slike/Pre/' . rawurlencode($ean) . '_small.png';
+        }
 
         $url = $this->productUrl(
             $shopBase,

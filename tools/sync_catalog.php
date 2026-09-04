@@ -137,6 +137,9 @@ function ensureProductActionColumns(PDO $pdo)
         'discount_percent' => 'DECIMAL(5,2) NULL',
         'action_start' => 'VARCHAR(32) NULL',
         'action_end'   => 'VARCHAR(32) NULL',
+        // Primary product image URL from the API feed. Older versions guessed
+        // images from EAN; the feed is now the source of truth.
+        'image_url' => 'VARCHAR(1024) NULL',
         // Per-storefront visibility, added to the API 2026-08-24. is_vp =
         // shown on the wholesale site (digitalis.ba), is_mp = shown on the
         // retail site (dstore.ba). Default 1 so an old row not yet touched
@@ -382,7 +385,7 @@ function syncSimple(PDO $pdo, DigitalisApi $api, $path, $table, array $columns)
 function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
 {
     $columns = [
-        'id', 'ean', 'model', 'name', 'description',
+        'id', 'ean', 'model', 'name', 'description', 'image_url',
         'brand_id', 'category_id', 'subcategory_id',
         'price', 'is_action', 'action_price', 'price_before', 'discount_percent',
         'action_start', 'action_end',
@@ -405,6 +408,7 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
         $name        = isset($p['name']) ? (string) $p['name'] : '';
         $model       = isset($p['Model']) ? (string) $p['Model'] : '';
         $description = isset($p['description']) ? (string) $p['description'] : '';
+        $imageUrl    = apiProductImageUrl($p);
         $priceBefore = isset($p['RRPrice_before']) && trim((string) $p['RRPrice_before']) !== ''
             ? Text::parseNumber($p['RRPrice_before'])
             : null;
@@ -445,6 +449,7 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
             $model,
             $name,
             $description,
+            $imageUrl,
             $brandId,
             isset($p['category_id']) ? (int) $p['category_id'] : null,
             isset($p['subcategory_id']) ? (int) $p['subcategory_id'] : null,
@@ -497,6 +502,126 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
 
     echo "\r";
     return $count;
+}
+
+/**
+ * Extract the primary product image URL from the API feed.
+ *
+ * The feed has changed shape before, so accept both a direct string and nested
+ * objects/lists such as images[0].url, photo.src, thumbnail.path, etc.
+ *
+ * @param array $product
+ * @return string|null
+ */
+function apiProductImageUrl(array $product)
+{
+    $keys = [
+        'image_url', 'imageUrl', 'main_image_url', 'mainImageUrl',
+        'thumbnail_url', 'thumbnailUrl', 'picture_url', 'pictureUrl',
+        'photo_url', 'photoUrl', 'slika_url', 'slikaUrl',
+        'image', 'images', 'main_image', 'mainImage',
+        'thumbnail', 'thumb', 'picture', 'pictures', 'photo', 'photos',
+        'slika', 'slike',
+    ];
+
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $product)) {
+            $url = firstImageUrlCandidate($product[$key]);
+            if ($url !== null) {
+                return $url;
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * @param mixed $value
+ * @return string|null
+ */
+function firstImageUrlCandidate($value)
+{
+    if (is_string($value) || is_numeric($value)) {
+        return normalizeImageUrl((string) $value);
+    }
+
+    if (!is_array($value)) {
+        return null;
+    }
+
+    foreach (['small', 'thumbnail', 'thumb', 'url', 'src', 'path', 'link', 'href'] as $key) {
+        if (array_key_exists($key, $value)) {
+            $url = firstImageUrlCandidate($value[$key]);
+            if ($url !== null) {
+                return $url;
+            }
+        }
+    }
+
+    foreach ($value as $child) {
+        $url = firstImageUrlCandidate($child);
+        if ($url !== null) {
+            return $url;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * @param string $url
+ * @return string|null
+ */
+function normalizeImageUrl($url)
+{
+    $url = trim(html_entity_decode($url, ENT_QUOTES, 'UTF-8'));
+    if ($url === '' || stripos($url, 'data:') === 0) {
+        return null;
+    }
+
+    if (preg_match('#^https?://#i', $url) === 1) {
+        return $url;
+    }
+
+    if (strpos($url, '//') === 0) {
+        return 'https:' . $url;
+    }
+
+    if (strpos($url, '/') === 0) {
+        return rtrim(syncImageBaseUrl(), '/') . $url;
+    }
+
+    if (preg_match('#\.(?:jpe?g|png|webp|gif)(?:\?.*)?$#i', $url) === 1) {
+        return rtrim(syncImageBaseUrl(), '/') . '/' . ltrim($url, '/');
+    }
+
+    return null;
+}
+
+/**
+ * @return string
+ */
+function syncImageBaseUrl()
+{
+    $base = (string) config_get('image_base_url', '');
+    if ($base !== '') {
+        return $base;
+    }
+
+    $apiBase = rtrim((string) config_get('digitalis_base_url', ''), '/');
+    if ($apiBase !== '') {
+        $parts = parse_url($apiBase);
+        if (isset($parts['scheme'], $parts['host'])) {
+            $base = $parts['scheme'] . '://' . $parts['host'];
+            if (isset($parts['port'])) {
+                $base .= ':' . $parts['port'];
+            }
+            return $base;
+        }
+    }
+
+    return (string) config_get('shop_base_url', 'https://www.digitalis.ba');
 }
 
 /**
