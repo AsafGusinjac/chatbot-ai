@@ -535,6 +535,7 @@
         '  animation: msgIn .28s cubic-bezier(.2,.7,.3,1) both;',
         '}',
         '.mrow.has-brands { width: 100%; max-width: 100%; }',
+        '.mrow.product-detail-row, .mrow.cart-action-row { width: 92%; max-width: 92%; }',
         '.mrow.user { align-self: flex-end; max-width: 82%; }',
         '.mrow.bot, .mrow.err { align-self: flex-start; }',
         '.avatar {',
@@ -551,6 +552,7 @@
         '}',
         '.m.has-cards, .m.has-brands { flex: 1 1 auto; }',
         '.m.bot  { background: var(--bubble); border-bottom-left-radius: 4px; }',
+        '.m.product-detail { width: 100%; }',
         '.m.user { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }',
         '.m.err  { background: #3a1f22; color: #f87171; border: 1px solid #5c2a2e; font-size: 14px; }',
         '.typing {',
@@ -655,8 +657,7 @@
         '.human-link:hover { border-color: var(--accent); background: var(--surface2); }',
         '.human-link:active { transform: scale(.96); }',
         '.cart-action {',
-        '  align-self: flex-start; width: calc(100% - 52px); max-width: calc(100% - 52px); margin: -4px 0 8px 52px;',
-        '  display: flex; align-items: center; gap: 8px; animation: msgIn .25s cubic-bezier(.2,.7,.3,1) both;',
+        '  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px;',
         '}',
         '.cart-action .buy-mini {',
         '  width: 100%; min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 9px;',
@@ -671,6 +672,7 @@
         '.cart-action .buy-mini:disabled { opacity: .55; cursor: default; }',
         '.cart-action .buy-mini span { line-height: 1; }',
         '.cart-action .buy-mini svg { width: 19px; height: 19px; display: block; stroke: currentColor; }',
+        '.mrow.cart-action-row .avatar { visibility: hidden; }',
         '.brand-choices {',
         '  display: flex; gap: 8px; align-items: stretch; align-self: flex-start; flex: 0 0 auto;',
         '  width: calc(100% - 52px); max-width: calc(100% - 52px); min-height: 98px; margin-left: 52px;',
@@ -790,6 +792,7 @@
         '  .ibtn-expand { display: none; }',
         '  .msgs { padding: 14px; }',
         '  .mrow, .mrow.user { max-width: 96%; }',
+        '  .mrow.product-detail-row, .mrow.cart-action-row { width: 96%; max-width: 96%; }',
         '  .brand-card { flex-basis: 82%; width: 82%; min-width: 82%; }',
         '  .card { gap: 9px; padding: 9px; }',
         '  .card img { width: 74px; height: 74px; }',
@@ -1112,6 +1115,10 @@
 
         var el = document.createElement('div');
         el.className = 'm ' + kind;
+        if (kind === 'bot' && /^Evo kratkih detalja za taj artikal:/i.test(String(text || ''))) {
+            row.className += ' product-detail-row';
+            el.className += ' product-detail';
+        }
         renderMessageText(el, text);
         row.appendChild(el);
 
@@ -1553,6 +1560,21 @@
             return;
         }
 
+        var row = document.createElement('div');
+        row.className = 'mrow bot cart-action-row';
+
+        var avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        if (CFG.logo) {
+            var logoImg = document.createElement('img');
+            logoImg.src = CFG.logo;
+            logoImg.alt = '';
+            avatar.appendChild(logoImg);
+        } else {
+            avatar.innerHTML = LOGO_SVG;
+        }
+        row.appendChild(avatar);
+
         var wrap = document.createElement('div');
         wrap.className = 'cart-action';
 
@@ -1569,7 +1591,8 @@
         buy.addEventListener('click', function () { addToCart(product, buy); });
 
         wrap.appendChild(buy);
-        els.msgs.appendChild(wrap);
+        row.appendChild(wrap);
+        els.msgs.appendChild(row);
         els.msgs.scrollTop = els.msgs.scrollHeight;
         saveTranscriptSoon();
     }
