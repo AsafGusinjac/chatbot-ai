@@ -1197,7 +1197,7 @@ class ChatService
         $looksSpecificToCurrentProduct =
             $this->currentProductAction !== ''
             || $this->looksLikeStockQuestion($message)
-            || preg_match('/\b(?:cijena|cena|kosta|koliko|garancija|jamstvo|dostava|dostupan|dostupno|stanje)\b/u', $norm) === 1;
+            || preg_match('/\b(?:cijena|cena|kosta|koliko|garancija|jamstvo|dostava|dostupan|dostupno|stanje|detalj\w*|opis\w*|slik\w*|specifikacij\w*|karakteristik\w*)\b/u', $norm) === 1;
 
         if (!$looksSpecificToCurrentProduct) {
             return null;
@@ -3299,13 +3299,9 @@ class ChatService
         $imageRequest = $this->looksLikeProductImageRequest(Text::normalize($message));
         $actionRequest = $this->looksLikeActionRequest($message);
         $title = (string) $product['name'];
-        $brandModel = trim((isset($product['brand']) ? (string) $product['brand'] : '') . ' ' . (isset($product['model']) ? (string) $product['model'] : ''));
-        if ($brandModel !== '' && stripos($title, $brandModel) === false) {
-            $title = $brandModel . ' - ' . $title;
-        }
 
         $lines = [
-            $imageRequest ? 'Evo slika za taj artikal:' : 'Evo detalji za taj artikal:',
+            $imageRequest ? 'Evo slika za taj artikal:' : 'Evo kratkih detalja za taj artikal:',
             '• ' . $title,
         ];
 
@@ -3333,26 +3329,179 @@ class ChatService
 
         if (isset($product['warranty_months']) && $product['warranty_months'] !== null) {
             $months = (int) $product['warranty_months'];
-            $lines[] = 'Garancija: ' . $months . ($months === 1 ? ' mjesec' : ' mjeseca');
+            $lines[] = 'Garancija: ' . $this->warrantyMonthsLabel($months);
         }
 
-        $category = trim((isset($product['category']) ? $product['category'] : '') . ' > ' . (isset($product['subcategory']) ? $product['subcategory'] : ''), ' >');
-        if ($category !== '') {
-            $lines[] = 'Kategorija: ' . $category;
+        $summary = $this->shortProductSummary($product);
+        if ($summary !== '' && preg_match('/\b(?:opis\w*|detalj\w*|informacij\w*|karakteristik\w*|kakav\w*|kakva\w*|kakvo\w*)\b/u', Text::normalize($message)) === 1) {
+            $lines[] = 'Kratko: ' . $summary;
+        }
+
+        if (!empty($product['in_stock'])) {
+            $this->lastCartProduct = $product;
+            $lines[] = 'Ako želite kupiti ovaj artikal, ispod možete kliknuti Dodaj u korpu.';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param array $product
+     * @return string
+     */
+    private function shortProductSummary(array $product)
+    {
+        $fromName = $this->shortProductSummaryFromName(isset($product['name']) ? (string) $product['name'] : '');
+        if ($fromName !== '') {
+            return $fromName;
         }
 
         $description = isset($product['description']) ? trim(strip_tags((string) $product['description'])) : '';
-        $description = trim(preg_replace('/\s+/u', ' ', $description));
-        if ($description !== '') {
-            if (mb_strlen($description) > 220) {
-                $description = mb_substr($description, 0, 220) . '…';
-            }
-            $lines[] = 'Opis: ' . $description;
+        if ($description === '') {
+            return '';
         }
 
-        $lines[] = $this->friendlyProductClosing([$product]);
+        $paragraphs = preg_split('/\R{2,}/u', $description);
+        $summary = '';
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = trim(preg_replace('/\s+/u', ' ', $paragraph));
+            if ($paragraph === '') {
+                continue;
+            }
+            if ($this->looksLikeDescriptionTitle($paragraph, $product)) {
+                continue;
+            }
 
-        return implode("\n", $lines);
+            $sentences = preg_split('/(?<=[.!?])\s+/u', $paragraph);
+            $summary = isset($sentences[0]) ? trim($sentences[0]) : $paragraph;
+            break;
+        }
+        if ($summary === '') {
+            return '';
+        }
+        if (mb_strlen($summary) > 135) {
+            $summary = trim(mb_substr($summary, 0, 135));
+            $lastSpace = mb_strrpos($summary, ' ');
+            if ($lastSpace !== false && $lastSpace > 70) {
+                $summary = trim(mb_substr($summary, 0, $lastSpace));
+            }
+            $summary = rtrim($summary, ' ,;:-');
+        }
+        $summary = preg_replace('/\s+\b(?:zahvaljujući|zahvaljujuci|uz|sa|s|koji|koja|koje|kako)\b$/iu', '', $summary);
+
+        return rtrim($summary, '.!?') . '.';
+    }
+
+    /**
+     * @param string $name
+     * @return string
+     */
+    private function shortProductSummaryFromName($name)
+    {
+        $parts = array_values(array_filter(array_map('trim', explode(',', (string) $name)), function ($part) {
+            return $part !== '';
+        }));
+        if (count($parts) < 2) {
+            return '';
+        }
+
+        $base = array_shift($parts);
+        $features = array_map([$this, 'displayProductFeature'], array_slice($parts, 0, 3));
+        if ($features === []) {
+            return '';
+        }
+
+        $featureText = $this->formatFeatureList($features);
+
+        return rtrim($base, '.!?') . ' sa ' . rtrim($featureText, '.!?') . '.';
+    }
+
+    /**
+     * @param string[] $features
+     * @return string
+     */
+    private function formatFeatureList(array $features)
+    {
+        $features = array_values($features);
+        if (count($features) === 1) {
+            return $features[0];
+        }
+        if (count($features) === 2) {
+            return $features[0] . ' i ' . $features[1];
+        }
+
+        $last = array_pop($features);
+        return implode(', ', $features) . ' i ' . $last;
+    }
+
+    /**
+     * @param string $feature
+     * @return string
+     */
+    private function displayProductFeature($feature)
+    {
+        $feature = trim((string) $feature);
+        $replacements = [
+            '/^snaga\s+/iu'       => 'snagom ',
+            '/^protok\s+/iu'      => 'protokom ',
+            '/^kapacitet\s+/iu'   => 'kapacitetom ',
+            '/^rezolucija\s+/iu'  => 'rezolucijom ',
+            '/^memorija\s+/iu'    => 'memorijom ',
+            '/^velicina\s+/iu'    => 'veličinom ',
+            '/^veličina\s+/iu'    => 'veličinom ',
+        ];
+        foreach ($replacements as $pattern => $replacement) {
+            $feature = preg_replace($pattern, $replacement, $feature);
+        }
+
+        return trim((string) $feature);
+    }
+
+    /**
+     * @param int $months
+     * @return string
+     */
+    private function warrantyMonthsLabel($months)
+    {
+        $months = (int) $months;
+        $lastTwo = $months % 100;
+        $last = $months % 10;
+        if ($months === 1) {
+            $word = 'mjesec';
+        } elseif ($last >= 2 && $last <= 4 && !($lastTwo >= 12 && $lastTwo <= 14)) {
+            $word = 'mjeseca';
+        } else {
+            $word = 'mjeseci';
+        }
+
+        return $months . ' ' . $word;
+    }
+
+    /**
+     * @param string $paragraph
+     * @param array  $product
+     * @return bool
+     */
+    private function looksLikeDescriptionTitle($paragraph, array $product)
+    {
+        $norm = Text::normalize($paragraph);
+        if (mb_strlen($norm) > 90) {
+            return false;
+        }
+
+        $needles = [
+            isset($product['name']) ? (string) $product['name'] : '',
+            isset($product['model']) ? (string) $product['model'] : '',
+            isset($product['brand']) ? (string) $product['brand'] : '',
+        ];
+        foreach ($needles as $needle) {
+            $needle = Text::normalize($needle);
+            if ($needle !== '' && strpos($norm, $needle) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -3419,7 +3568,7 @@ class ChatService
         if ($action === 'warranty' || preg_match('/\b(?:garancij\w*|jamstv\w*)\b/u', $norm) === 1) {
             if (isset($product['warranty_months']) && $product['warranty_months'] !== null) {
                 $months = (int) $product['warranty_months'];
-                return 'Garancija za ovaj artikal traje ' . $months . ($months === 1 ? ' mjesec. ' : ' mjeseca. ') . $availability . $cartHint;
+                return 'Garancija za ovaj artikal traje ' . $this->warrantyMonthsLabel($months) . '. ' . $availability . $cartHint;
             }
 
             return 'Za ovaj artikal trenutno nemam posebno upisan rok garancije u katalogu. ' . $availability . ' Za potvrdu garancije najbolje je provjeriti prije narudžbe.' . $cartHint;
