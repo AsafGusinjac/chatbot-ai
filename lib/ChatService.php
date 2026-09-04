@@ -3753,6 +3753,12 @@ class ChatService
             ? $this->formatKm((float) $product['action_price'])
             : ($isAction && isset($product['price']) && $product['price'] !== null ? $price : null);
         $shownPrice = ($isAction && $actionPrice !== null) ? $actionPrice : $price;
+        $unitPriceValue = null;
+        if ($isAction && isset($product['action_price']) && $product['action_price'] !== null) {
+            $unitPriceValue = (float) $product['action_price'];
+        } elseif (isset($product['price']) && $product['price'] !== null) {
+            $unitPriceValue = (float) $product['price'];
+        }
         $availability = !empty($product['in_stock'])
             ? 'Ovaj artikal sam provjerio i trenutno ga imamo na stanju, dostupan je odmah za slanje.'
             : 'Ovaj artikal sam provjerio i trenutno nije na stanju.';
@@ -3769,6 +3775,18 @@ class ChatService
         if (($action === 'price' || preg_match('/\b(?:cijen\w*|cena|kosta\w*|koliko)\b/u', $norm) === 1)
             && preg_match('/\b(?:garancij\w*|jamstv\w*)\b/u', $norm) !== 1
         ) {
+            $quantity = $this->requestedProductQuantity($message);
+            if ($quantity > 1 && $unitPriceValue !== null) {
+                $prefix = ($isAction && $actionPrice !== null) ? 'Akcijska cijena' : 'Cijena';
+                $total = $this->formatKm($unitPriceValue * $quantity);
+                $unit = $this->formatKm($unitPriceValue);
+
+                return $prefix . ' za ' . $quantity . ' komada bi bila ' . $total
+                    . ' (' . $unit . ' po komadu). '
+                    . $this->availabilityForRequestedQuantity($product, $quantity)
+                    . $cartHint;
+            }
+
             $prefix = ($isAction && $actionPrice !== null) ? 'Akcijska cijena' : 'Cijena';
             return $prefix . ' za ovaj artikal je ' . $shownPrice . '. ' . $availability . $cartHint;
         }
@@ -3783,6 +3801,49 @@ class ChatService
         }
 
         return $this->singleProductReply($product, $message);
+    }
+
+    /**
+     * @param string $message
+     * @return int
+     */
+    private function requestedProductQuantity($message)
+    {
+        $norm = Text::normalize($message);
+        $patterns = [
+            '/\b(\d{1,3})\s*(?:x|kom|komad\w*|artik\w*|proizvod\w*)\b/u',
+            '/\b(\d{1,3})\s+(?:ovakv\w*|ist\w*|takv\w*|ovih|tih)\b/u',
+            '/\b(?:za|na)\s+(\d{1,3})\s*(?:kom|komad\w*|artik\w*|proizvod\w*)?\b/u',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $norm, $m) === 1) {
+                $quantity = (int) $m[1];
+                if ($quantity >= 2 && $quantity <= 999) {
+                    return $quantity;
+                }
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * @param array $product
+     * @param int   $quantity
+     * @return string
+     */
+    private function availabilityForRequestedQuantity(array $product, $quantity)
+    {
+        if (empty($product['in_stock'])) {
+            return 'Ovaj artikal sam provjerio i trenutno nije na stanju.';
+        }
+
+        if (isset($product['stock']) && $product['stock'] !== null && (int) $product['stock'] >= (int) $quantity) {
+            return 'Provjerio sam i trenutno imamo tu količinu na stanju, dostupna je odmah za slanje.';
+        }
+
+        return 'Artikal je trenutno na stanju, ali za traženu količinu najbolje je potvrditi dostupnost prije narudžbe.';
     }
 
     /**
