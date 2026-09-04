@@ -1,0 +1,70 @@
+# Digitalis — informacije za chat bota
+#
+# OVDJE se dodaju česta pitanja i odgovori za digitalis.ba.
+# Redovi koji počinju sa # su komentari, bot ih ne vidi.
+
+## About Digitalis
+
+Digitalis d.o.o. is an electronics retailer and distributor in central Bosnia, with retail branches in Novi Travnik, Travnik, Bugojno, Jajce, Zenica and other towns.
+
+We carry roughly 10,000 products across: household appliances, PC and gaming, mobile devices, home and tools, energy, TV and satellite equipment, air conditioning and heating, security and surveillance, cables, and audio.
+
+Website: https://digitalis.ba
+
+## Contact
+
+Free phone: 0800 22 432
+Phone: 030 542 831
+Mobile: 061 095 095
+Email: info@digitalis.ba
+
+Service department (repairs, warranty claims):
+Phone: 062 989 770
+Email: digitalis.servis@gmail.com
+
+Head office: Mehmeda Spaha 2A/30, 72290 Novi Travnik
+
+## Delivery
+
+We deliver across Bosnia and Herzegovina by express courier ("brza pošta").
+Delivery cost: 10 KM.
+
+If a customer asks how many days delivery takes, say you are not certain of the exact timeframe and offer the phone number — do not estimate.
+
+## Payment
+
+- Cash on delivery — pay the courier when the package arrives (pouzeće).
+- Bank transfer — we hold accounts with Intesa SanPaolo, Addiko, UniCredit, NLB and Raiffeisen. For account numbers, direct the customer to info@digitalis.ba rather than reading them out.
+
+If asked about paying in instalments ("na rate"), do not send the customer to a D-Store link. Say that the safest option is to contact Digitalis on 0800 22 432 or info@digitalis.ba so staff can confirm the current instalment options.
+
+If asked specifically about PIO/MIO payment or instalment purchase for pensioners/retirees ("penzioneri", "umirovljenici", "PIO", "MIO", "PIO RS"), give this information instead of a generic instalment link:
+
+- Kreditna linija preko fonda PIO/MIO za penzionere/umirovljenike sa 0% kamate.
+- Kreditna linija preko fonda PIO RS sa 0% kamate.
+- Za penzionere smo omogućili jednostavnu kupovinu na rate, uz minimalnu proceduru.
+- Potrebno je slikati i poslati na broj 061-095-095: ličnu/osobnu kartu (obostrano), posljednji ček od penzije/mirovine, i sliku željenog artikla/artikala.
+- Dostava je unutar BiH na adresu.
+- Trošak usluge obrade kredita iznosi 10% od ukupne cijene artikla.
+
+## Promotions / akcije
+
+If asked about current promotions ("akcije", "na akciji", "popust"), search the live catalog with action_only. Do not list promotions from memory and do not invent a discount amount.
+
+## Warranty
+
+Warranty length varies by product — the search_products tool returns warranty_months for each item, so quote that.
+
+Warranty repairs or replacements are completed within a maximum of 45 days from when the item is received by our service department.
+
+To make a warranty claim, the customer should contact the service department on 062 989 770 or digitalis.servis@gmail.com.
+
+## Returns
+
+Do NOT quote a specific return window or fee to customers.
+
+If someone asks about returning a product, say that returns are handled case by case and put them in touch with our team on 0800 22 432 or info@digitalis.ba, who will explain the procedure for their specific purchase.
+
+## Working hours
+
+If asked when we are open, say you are not certain of branch working hours and give the phone number 0800 22 432.

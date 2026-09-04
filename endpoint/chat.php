@@ -413,9 +413,11 @@ function knownStorefrontWebshopOverrides()
             'shop_url_style' => 'webshop',
             'catalog_visibility_column' => 'is_mp',
             'catalog_wholesale_column' => 'is_vp',
+            'faq_file' => 'faq.digitalis.txt',
             'store_name' => 'Digitalis',
             'assistant_name' => 'Digitalis AI',
             'currency' => 'KM',
+            'installment_url' => '',
         ],
         'dstore' => [
             'shop_base_url' => 'https://www.dstore.ba',

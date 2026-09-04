@@ -110,6 +110,18 @@ return [
     //         'assistant_name' => 'Dstore AI',
     //         'installment_url' => 'https://www.dstore.ba/kupovina-na-rate',
     //     ],
+    //     'https://www.digitalis.ba' => [
+    //         'shop_base_url' => 'https://www.digitalis.ba',
+    //         'image_base_url' => 'https://www.digitalis.ba',
+    //         'brand_image_base_url' => 'https://www.digitalis.ba',
+    //         'shop_url_style' => 'webshop',
+    //         'catalog_visibility_column' => 'is_mp',
+    //         'catalog_wholesale_column' => 'is_vp',
+    //         'faq_file' => 'faq.digitalis.txt',
+    //         'store_name' => 'Digitalis',
+    //         'assistant_name' => 'Digitalis AI',
+    //         'installment_url' => '',
+    //     ],
     // ],
     // Same idea, but selected explicitly by embed.js via data-webshop="dstore".
     // 'storefront_webshop_overrides' => [
@@ -123,6 +135,18 @@ return [
     //         'store_name' => 'D-Store',
     //         'assistant_name' => 'Dstore AI',
     //         'installment_url' => 'https://www.dstore.ba/kupovina-na-rate',
+    //     ],
+    //     'digitalis' => [
+    //         'shop_base_url' => 'https://www.digitalis.ba',
+    //         'image_base_url' => 'https://www.digitalis.ba',
+    //         'brand_image_base_url' => 'https://www.digitalis.ba',
+    //         'shop_url_style' => 'webshop',
+    //         'catalog_visibility_column' => 'is_mp',
+    //         'catalog_wholesale_column' => 'is_vp',
+    //         'faq_file' => 'faq.digitalis.txt',
+    //         'store_name' => 'Digitalis',
+    //         'assistant_name' => 'Digitalis AI',
+    //         'installment_url' => '',
     //     ],
     // ],
     // Base public visibility is the retail/public catalog. On wholesale
