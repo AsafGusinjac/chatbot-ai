@@ -92,13 +92,22 @@
         return theme === 'light' ? 'light' : 'dark';
     }
 
+    function storedTheme() {
+        try {
+            var theme = String(window.localStorage.getItem('dstore_chat_theme') || '').toLowerCase();
+            return (theme === 'light' || theme === 'dark') ? theme : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
     var CFG = {
         endpoint: attr('data-endpoint', '/endpoint/chat.php'),
         title:    attr('data-title', 'Dstore AI asistent'),
         greeting: attr('data-greeting',
             'Zdravo! Mogu pomoći oko proizvoda, cijena, dostave i garancije. Šta vas zanima?'),
         color:    attr('data-color', '#f26529'),
-        theme:    normalizeTheme(attr('data-theme', 'dark')),
+        theme:    storedTheme() || normalizeTheme(attr('data-theme', 'dark')),
         position: attr('data-position', 'right') === 'left' ? 'left' : 'right',
         currency: attr('data-currency', 'KM'),
         logo:     attr('data-logo', ''),
@@ -174,6 +183,26 @@
         if (shadowHost) {
             shadowHost.setAttribute('data-theme', CFG.theme);
         }
+        try {
+            window.localStorage.setItem('dstore_chat_theme', CFG.theme);
+        } catch (e) {
+            // Theme still changes for this page even when storage is disabled.
+        }
+        updateThemeButton();
+    }
+
+    function toggleTheme() {
+        setTheme(CFG.theme === 'light' ? 'dark' : 'light');
+    }
+
+    function updateThemeButton() {
+        if (!els || !els.themeBtn) {
+            return;
+        }
+        var next = CFG.theme === 'light' ? 'Tamna tema' : 'Svijetla tema';
+        els.themeBtn.innerHTML = CFG.theme === 'light' ? ICON_MOON : ICON_SUN;
+        els.themeBtn.title = next;
+        els.themeBtn.setAttribute('aria-label', next);
     }
 
     function cleanProductValue(value) {
@@ -395,6 +424,10 @@
         + '</svg>';
     var ICON_EXPAND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm16 0v6h-6v-2h4v-4h2z"/></svg>';
     var ICON_COLLAPSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h2v6H5V7h4V3zm6 0h2v4h4v2h-6V3zM5 15h6v6H9v-4H5v-2zm10 6v-6h6v2h-4v4h-2z"/></svg>';
+    var ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+        + '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>';
+    var ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8z"></path></svg>';
 
     // Launcher icon swaps between the chat bubble (closed) and an X
     // (open) - the standard pattern for a chat widget toggle button.
@@ -1067,6 +1100,10 @@
         var acts = document.createElement('div');
         acts.className = 'acts';
 
+        var themeBtn = document.createElement('button');
+        themeBtn.type = 'button';
+        themeBtn.className = 'ibtn ibtn-theme';
+
         var expandBtn = document.createElement('button');
         expandBtn.type = 'button';
         expandBtn.className = 'ibtn ibtn-expand';
@@ -1089,6 +1126,7 @@
         closeBtn.title = TEXT.close;
         closeBtn.setAttribute('aria-label', TEXT.close);
 
+        acts.appendChild(themeBtn);
         acts.appendChild(expandBtn);
         acts.appendChild(resetBtn);
         acts.appendChild(closeBtn);
@@ -1140,8 +1178,9 @@
         els = {
             panel: panel, msgs: msgs, form: form, input: input,
             send: send, launcher: launcher, closeBtn: closeBtn, resetBtn: resetBtn,
-            expandBtn: expandBtn, teaser: teaser
+            expandBtn: expandBtn, themeBtn: themeBtn, teaser: teaser
         };
+        updateThemeButton();
     }
 
     function addMessage(text, kind) {
@@ -2154,6 +2193,10 @@
             userTouchedPanel = true;
             closePanel();
             els.launcher.focus();
+        });
+
+        els.themeBtn.addEventListener('click', function () {
+            toggleTheme();
         });
 
         if (CFG.autoOpenDelay > 0) {
