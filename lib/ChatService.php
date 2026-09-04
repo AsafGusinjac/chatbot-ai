@@ -477,6 +477,22 @@ class ChatService
             ];
         }
 
+        $petProductReply = $this->petProductReply($message, $conversationId);
+        if ($petProductReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $petProductReply);
+            $this->rememberLastProducts($conversationId);
+
+            return [
+                'reply'           => $petProductReply,
+                'conversation_id' => $conversationId,
+                'products'        => $this->lastProducts,
+                'more_url'        => $this->lastMoreUrl,
+                'quick_replies'   => $this->lastQuickReplies,
+                'brand_choices'   => [],
+            ];
+        }
+
         $directProductReply = $this->directCatalogProductReply($message, $conversationId);
         if ($directProductReply !== null) {
             $this->store->append($conversationId, 'user', $message);
@@ -1761,6 +1777,137 @@ class ChatService
         }
 
         return $intro . "\n" . implode("\n", $lines) . "\n\n" . $this->friendlyProductClosing($results);
+    }
+
+    /**
+     * Keep pet-related questions grounded in the real electronics catalog.
+     *
+     * Customers may say "cuke"/"psi" and then follow up with "hrana" or
+     * "poslastice". The store carries pet devices/accessories, not dog food
+     * or treats, so do not let the model invent grocery-style categories.
+     *
+     * @param string   $message
+     * @param int|null $conversationId
+     * @return string|null
+     */
+    private function petProductReply($message, $conversationId = null)
+    {
+        $norm = Text::normalize($message);
+        $hasPetWord = $this->looksLikePetTopic($norm);
+        $hasPetContext = $hasPetWord
+            || $this->previousPetTopicMentioned()
+            || $this->previousProductsWerePetProducts($conversationId);
+        $asksFoodOrTreat = preg_match('/\b(?:hran\w*|poslastic\w*)\b/u', $norm) === 1;
+
+        if (!$hasPetContext && !$hasPetWord) {
+            return null;
+        }
+
+        if (!$hasPetWord && !$asksFoodOrTreat) {
+            return null;
+        }
+
+        $products = $this->search->search('kućni ljubimci', [
+            'limit'              => (int) config_get('product_card_limit', 8),
+            'in_stock_only'      => true,
+            'wholesale_verified' => $this->wholesaleVerified,
+        ]);
+
+        if ($products === []) {
+            return $asksFoodOrTreat
+                ? 'Hranu ili poslastice za pse trenutno ne vidim u katalogu.'
+                : 'Trenutno ne vidim artikle za kućne ljubimce u katalogu.';
+        }
+
+        usort($products, function ($a, $b) {
+            return $this->petProductPriority($a) <=> $this->petProductPriority($b);
+        });
+
+        $this->lastProducts = $products;
+        $this->lastMoreUrl  = $this->search->shopListingUrlForResults($products);
+
+        $lines = [];
+        foreach ($products as $product) {
+            $lines[] = $this->productListLine($product);
+        }
+
+        if ($asksFoodOrTreat) {
+            $intro = 'Hranu ili poslastice za pse trenutno ne vidim u katalogu. Od opreme za kućne ljubimce imamo:';
+        } else {
+            $intro = 'Za kućne ljubimce trenutno imamo opremu i uređaje iz kataloga:';
+        }
+
+        return $intro . "\n" . implode("\n", $lines) . "\n\n" . $this->friendlyProductClosing($products);
+    }
+
+    /**
+     * @param array $product
+     * @return int
+     */
+    private function petProductPriority(array $product)
+    {
+        $name = Text::normalize(isset($product['name']) ? (string) $product['name'] : '');
+        if (preg_match('/\b(?:fontan\w*|hranilic\w*|tracker\w*|gps)\b/u', $name) === 1
+            && preg_match('/\b(?:filter\w*|ulozak\w*)\b/u', $name) !== 1
+        ) {
+            return 0;
+        }
+        if (preg_match('/\b(?:filter\w*|ulozak\w*)\b/u', $name) === 1) {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    /**
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikePetTopic($norm)
+    {
+        return preg_match('/\b(?:cuk\w*|cuko|pas|psa|pse|psi|kuce|kucet\w*|ljubim\w*)\b/u', $norm) === 1;
+    }
+
+    /**
+     * @return bool
+     */
+    private function previousPetTopicMentioned()
+    {
+        for ($i = count($this->currentMessages) - 2; $i >= 0; $i--) {
+            if (!isset($this->currentMessages[$i]['content'])) {
+                continue;
+            }
+            if ($this->looksLikePetTopic(Text::normalize((string) $this->currentMessages[$i]['content']))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param int|null $conversationId
+     * @return bool
+     */
+    private function previousProductsWerePetProducts($conversationId)
+    {
+        if ($conversationId === null) {
+            return false;
+        }
+
+        $products = $this->productsForIds($this->store->lastProductIds($conversationId));
+        foreach ($products as $product) {
+            $category = Text::normalize(
+                (isset($product['category']) ? (string) $product['category'] : '') . ' '
+                . (isset($product['subcategory']) ? (string) $product['subcategory'] : '') . ' '
+                . (isset($product['name']) ? (string) $product['name'] : '')
+            );
+            if ($this->looksLikePetTopic($category)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
