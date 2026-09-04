@@ -140,6 +140,9 @@ function ensureProductActionColumns(PDO $pdo)
         // Primary product image URL from the API feed. Older versions guessed
         // images from EAN; the feed is now the source of truth.
         'image_url' => 'VARCHAR(1024) NULL',
+        // Raw product specifications from the API feed, stored as JSON so
+        // answers can read structured facts before falling back to prose.
+        'specifications_json' => 'MEDIUMTEXT NULL',
         // Per-storefront visibility, added to the API 2026-08-24. is_vp =
         // shown on the wholesale site (digitalis.ba), is_mp = shown on the
         // retail site (dstore.ba). Default 1 so an old row not yet touched
@@ -385,7 +388,7 @@ function syncSimple(PDO $pdo, DigitalisApi $api, $path, $table, array $columns)
 function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
 {
     $columns = [
-        'id', 'ean', 'model', 'name', 'description', 'image_url',
+        'id', 'ean', 'model', 'name', 'description', 'image_url', 'specifications_json',
         'brand_id', 'category_id', 'subcategory_id',
         'price', 'is_action', 'action_price', 'price_before', 'discount_percent',
         'action_start', 'action_end',
@@ -409,6 +412,11 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
         $model       = isset($p['Model']) ? (string) $p['Model'] : '';
         $description = isset($p['description']) ? (string) $p['description'] : '';
         $imageUrl    = apiProductImageUrl($p);
+        $specifications = apiProductSpecifications($p);
+        $specificationsJson = $specifications === []
+            ? null
+            : json_encode($specifications, JSON_UNESCAPED_UNICODE);
+        $specificationsText = specificationsSearchText($specifications);
         $priceBefore = isset($p['RRPrice_before']) && trim((string) $p['RRPrice_before']) !== ''
             ? Text::parseNumber($p['RRPrice_before'])
             : null;
@@ -450,6 +458,7 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
             $name,
             $description,
             $imageUrl,
+            $specificationsJson,
             $brandId,
             isset($p['category_id']) ? (int) $p['category_id'] : null,
             isset($p['subcategory_id']) ? (int) $p['subcategory_id'] : null,
@@ -478,7 +487,7 @@ function writeProducts(PDO $pdo, array $products, array $brandNames, $runStamp)
             // when the feed omits it - unlike is_vp/is_mp, hiding is the
             // safe default here, not showing.
             isset($p['new_product']) ? (int) $p['new_product'] : 0,
-            Text::normalize($name . ' ' . $model . ' ' . $brandName . ' ' . $description),
+            Text::normalize($name . ' ' . $model . ' ' . $brandName . ' ' . $description . ' ' . $specificationsText),
             // Name/model/brand only, so ranking can tell "a laptop" apart
             // from "a backpack for a laptop".
             $nameText,
@@ -534,6 +543,72 @@ function apiProductImageUrl(array $product)
     }
 
     return null;
+}
+
+/**
+ * @param array $product
+ * @return array<int,array{name:string,value:string,type:string}>
+ */
+function apiProductSpecifications(array $product)
+{
+    if (!isset($product['specifications']) || !is_array($product['specifications'])) {
+        return [];
+    }
+
+    $out = [];
+    foreach ($product['specifications'] as $spec) {
+        if (!is_array($spec)) {
+            continue;
+        }
+
+        $name = firstStringValue($spec, ['name', 'label', 'title', 'spec_name', 'specName']);
+        $value = firstStringValue($spec, ['value', 'val', 'text', 'spec_value', 'specValue']);
+        if ($name === '' || $value === '') {
+            continue;
+        }
+
+        $out[] = [
+            'name'  => $name,
+            'value' => $value,
+            'type'  => firstStringValue($spec, ['spec_type', 'specType', 'type']),
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * @param array<int,array{name:string,value:string,type:string}> $specifications
+ * @return string
+ */
+function specificationsSearchText(array $specifications)
+{
+    $parts = [];
+    foreach ($specifications as $spec) {
+        $parts[] = $spec['name'];
+        $parts[] = $spec['value'];
+    }
+
+    return implode(' ', $parts);
+}
+
+/**
+ * @param array  $row
+ * @param string[] $keys
+ * @return string
+ */
+function firstStringValue(array $row, array $keys)
+{
+    foreach ($keys as $key) {
+        if (isset($row[$key]) && !is_array($row[$key])) {
+            $value = trim((string) $row[$key]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+    }
+
+    return '';
 }
 
 /**

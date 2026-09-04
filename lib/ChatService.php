@@ -3197,7 +3197,20 @@ class ChatService
         $this->candidateProducts = $results;
         $this->candidateMoreUrl  = $this->search->shopListingUrlForResults($results, $sort);
 
-        return json_encode($results, JSON_UNESCAPED_UNICODE);
+        return json_encode($this->productsForModel($results), JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @param array[] $products
+     * @return array[]
+     */
+    private function productsForModel(array $products)
+    {
+        foreach ($products as $i => $product) {
+            unset($products[$i]['full_description']);
+        }
+
+        return $products;
     }
 
     /**
@@ -3974,12 +3987,44 @@ class ChatService
      */
     private function batteryRuntimeFromProduct(array $product)
     {
+        $specValue = $this->productSpecificationValue($product, [
+            'trajanje baterije',
+            'baterija',
+            'autonomija',
+            'vrijeme rada',
+            'vreme rada',
+            'vrijeme leta',
+            'vreme leta',
+            'let',
+        ]);
+        if ($specValue !== null) {
+            $runtime = $this->runtimeFromText($specValue);
+            if ($runtime !== null) {
+                return $runtime;
+            }
+        }
+
         $fields = [
             isset($product['name']) ? (string) $product['name'] : '',
             isset($product['model']) ? (string) $product['model'] : '',
+            isset($product['full_description']) ? strip_tags((string) $product['full_description']) : '',
             isset($product['description']) ? strip_tags((string) $product['description']) : '',
         ];
         $text = trim(preg_replace('/\s+/u', ' ', implode(' ', $fields)));
+        if ($text === '') {
+            return null;
+        }
+
+        return $this->runtimeFromText($text);
+    }
+
+    /**
+     * @param string $text
+     * @return string|null
+     */
+    private function runtimeFromText($text)
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', (string) $text));
         if ($text === '') {
             return null;
         }
@@ -3989,6 +4034,7 @@ class ChatService
             '/\b(?:do|cca\.?|oko|približno|priblizno)\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b[^.;:,]{0,80}?(?:trajanje|vrijeme|vreme|autonomija|let|leta|rada|radi|baterij)/iu',
             '/\bbaterij\w*[^.;:,]{0,80}?\b(?:do|cca\.?|oko|približno|priblizno)?\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b/iu',
             '/\b(?:do|cca\.?|oko|približno|priblizno)\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\b/iu',
+            '/^\s*(\d{1,3}(?:[,.]\d+)?)\s*(minuta|min\.?|minute|min|h|sati|sat(?:a|i)?)\s*$/iu',
         ];
 
         foreach ($patterns as $pattern) {
@@ -3997,6 +4043,40 @@ class ChatService
                 $unit = Text::normalize((string) $m[2]);
                 if ($this->looksLikePlausibleRuntime($amount, $unit)) {
                     return 'do ' . $this->formatRuntimeAmount($amount, $unit);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array    $product
+     * @param string[] $needles
+     * @return string|null
+     */
+    private function productSpecificationValue(array $product, array $needles)
+    {
+        if (empty($product['specifications']) || !is_array($product['specifications'])) {
+            return null;
+        }
+
+        $normalizedNeedles = array_map(['Text', 'normalize'], $needles);
+        foreach ($product['specifications'] as $spec) {
+            if (!is_array($spec)) {
+                continue;
+            }
+
+            $name = isset($spec['name']) ? (string) $spec['name'] : '';
+            $value = isset($spec['value']) ? trim((string) $spec['value']) : '';
+            if ($name === '' || $value === '') {
+                continue;
+            }
+
+            $nameNorm = Text::normalize($name);
+            foreach ($normalizedNeedles as $needle) {
+                if ($needle !== '' && strpos($nameNorm, $needle) !== false) {
+                    return $value;
                 }
             }
         }

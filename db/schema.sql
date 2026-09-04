@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS products (
     name            VARCHAR(512)  NOT NULL DEFAULT '',
     description     TEXT          NULL,
     image_url       VARCHAR(1024) NULL,
+    specifications_json MEDIUMTEXT NULL,
 
     brand_id        INT UNSIGNED  NULL,
     category_id     INT UNSIGNED  NULL,

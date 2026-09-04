@@ -39,6 +39,9 @@ class ProductSearch
     /** @var bool Whether the local products table has the image_url column. */
     private $imageColumnAvailable = false;
 
+    /** @var bool Whether the local products table has the specifications_json column. */
+    private $specificationsColumnAvailable = false;
+
     /** @param PDO $pdo */
     public function __construct(PDO $pdo)
     {
@@ -47,6 +50,7 @@ class ProductSearch
         $this->visibilityColumnsAvailable = $this->ensureVisibilityColumns();
         $this->newProductColumnAvailable = $this->ensureNewProductColumn();
         $this->imageColumnAvailable = $this->ensureImageColumn();
+        $this->specificationsColumnAvailable = $this->ensureSpecificationsColumn();
     }
 
     /**
@@ -4808,6 +4812,27 @@ class ProductSearch
     }
 
     /**
+     * Raw JSON specifications from the API feed. Same lazy migration pattern
+     * so older cPanel databases keep serving search while waiting for sync.
+     *
+     * @return bool
+     */
+    private function ensureSpecificationsColumn()
+    {
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM products LIKE 'specifications_json'");
+            if ($stmt !== false && $stmt->fetch() === false) {
+                $this->pdo->exec('ALTER TABLE products ADD COLUMN `specifications_json` MEDIUMTEXT NULL AFTER `image_url`');
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            error_log('ProductSearch: specifications_json column unavailable — ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * @param bool     $inStockOnly
      * @param int|null $supercategoryId
      * @param int|null $categoryId
@@ -4902,9 +4927,12 @@ class ProductSearch
         $image = $this->imageColumnAvailable
             ? ', p.image_url'
             : ', NULL AS image_url';
+        $specifications = $this->specificationsColumnAvailable
+            ? ', p.specifications_json'
+            : ', NULL AS specifications_json';
 
         return 'SELECT p.id, p.ean, p.model, p.name, p.description, p.head_word, p.brand_id,
-                       p.price, p.stock, p.warranty_months' . $action . $newProduct . $image . ',
+                       p.price, p.stock, p.warranty_months' . $action . $newProduct . $image . $specifications . ',
                        b.name  AS brand,
                        c.name  AS category,
                        sc.name AS subcategory' . $extra . '
@@ -5014,7 +5042,8 @@ class ProductSearch
      */
     private function shape(array $row)
     {
-        $description = (string) $row['description'];
+        $fullDescription = (string) $row['description'];
+        $description = $fullDescription;
         if (mb_strlen($description) > 300) {
             $description = mb_substr($description, 0, 300) . '…';
         }
@@ -5072,7 +5101,23 @@ class ProductSearch
             'warranty_months' => $row['warranty_months'] !== null ? (int) $row['warranty_months'] : null,
             'ean'         => $row['ean'],
             'description' => $description,
+            'full_description' => $fullDescription,
+            'specifications' => $this->decodeSpecifications(isset($row['specifications_json']) ? $row['specifications_json'] : null),
         ];
+    }
+
+    /**
+     * @param mixed $json
+     * @return array<int,array{name:string,value:string,type:string}>
+     */
+    private function decodeSpecifications($json)
+    {
+        if ($json === null || trim((string) $json) === '') {
+            return [];
+        }
+
+        $decoded = json_decode((string) $json, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
