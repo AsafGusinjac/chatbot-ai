@@ -289,6 +289,21 @@ class ChatService
             ];
         }
 
+        $frustratedHelp = $this->frustratedHelpReply($message);
+        if ($frustratedHelp !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $frustratedHelp);
+
+            return [
+                'reply'           => $frustratedHelp,
+                'conversation_id' => $conversationId,
+                'products'        => [],
+                'more_url'        => null,
+                'quick_replies'   => [],
+                'brand_choices'   => [],
+            ];
+        }
+
         $history   = $this->store->history($conversationId, self::HISTORY_LIMIT);
         $history[] = ['role' => 'user', 'content' => $message];
         $this->currentMessages = $history;
@@ -1009,6 +1024,28 @@ class ChatService
     }
 
     /**
+     * When the customer is frustrated but has not named a concrete product,
+     * do not mine the complaint for accidental catalog words. Ask for the
+     * item/category directly and keep the conversation useful.
+     *
+     * @param string $message
+     * @return string|null
+     */
+    private function frustratedHelpReply($message)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\b(?:sranj\w*|glupost\w*|bezveze|nervir\w*|ne\s+pisi|ne\s+pisite|pomozi|pomozite)\b/u', $norm) !== 1) {
+            return null;
+        }
+
+        if (preg_match('/\b(?:treba\w*|trazim|trazi\w*|zelim|hocu|kup\w*|cijen\w*|stanj\w*|garancij\w*|dostav\w*)\b/u', $norm) === 1) {
+            return null;
+        }
+
+        return 'Razumijem. Idemo konkretno: napišite koji artikal, kategoriju ili brend tražite, pa ću provjeriti cijenu i stanje.';
+    }
+
+    /**
      * @param string $message
      * @return bool
      */
@@ -1337,14 +1374,38 @@ class ChatService
     private function brandRangeReply($message)
     {
         $norm = Text::normalize($message);
+        $tokens = Text::meaningfulTokens($message);
+
+        if (count($tokens) <= 2) {
+            $brandOnly = $this->search->resolveBrandName(implode(' ', $tokens));
+            if ($brandOnly !== false) {
+                $result = $this->search->brandCategories($brandOnly['name'], 10);
+                if ($result['categories'] !== []) {
+                    $parts = [];
+                    foreach ($result['categories'] as $category) {
+                        $parts[] = $category['category'] . ' (' . (int) $category['products'] . ')';
+                    }
+
+                    return 'Od brenda ' . $result['brand'] . ' trenutno imamo na stanju: '
+                        . $this->formatOptionList($parts) . '.';
+                }
+            }
+        }
+
         if (preg_match('/\b(?:sta|sto|koje|kakve|sve|brend\w*|proizvod\w*|proizvodi|asortiman|ponud\w*)\b/u', $norm) !== 1) {
+            return null;
+        }
+        if (
+            preg_match('/\b(?:brend\w*|mark\w*|proizvodac\w*|asortiman|ponud\w*)\b/u', $norm) !== 1
+            && preg_match('/\b(?:sta|sto|koje|kakve)\s+sve\b/u', $norm) !== 1
+            && preg_match('/\b(?:sta|sto)\s+\w+\s+(?:proizvod\w*|ima|nudi)\b/u', $norm) !== 1
+        ) {
             return null;
         }
         if (preg_match('/\b(?:proizvod\w*|brend\w*|mark\w*|asortiman|ponud\w*|sta\s+sve|sto\s+sve|koje\s+sve|kakve\s+sve)\b/u', $norm) !== 1) {
             return null;
         }
 
-        $tokens = Text::meaningfulTokens($message);
         $candidates = [];
         foreach ($tokens as $token) {
             if (mb_strlen($token) >= 4) {

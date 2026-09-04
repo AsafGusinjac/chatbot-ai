@@ -605,11 +605,18 @@ class ProductSearch
         }
 
         $norm = Text::normalize($brand);
+        if (in_array($norm, ['brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova', 'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca'], true)) {
+            return false;
+        }
+
         $best = null;
         $bestDistance = 99;
         foreach ($this->brandMap() as $candidate) {
             $candidateNorm = (string) $candidate['norm'];
             if (mb_strlen($candidateNorm) < 4 || abs(mb_strlen($candidateNorm) - mb_strlen($norm)) > 2) {
+                continue;
+            }
+            if (mb_substr($candidateNorm, 0, 1) !== mb_substr($norm, 0, 1)) {
                 continue;
             }
 

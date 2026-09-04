@@ -144,10 +144,15 @@ class Text
         'pokazali', 'prikazi', 'prikaze', 'prikazes', 'prikazite',
         'ispisi', 'ispise', 'ispisite', 'izbaci', 'izbace', 'izbacite',
         'listaj', 'listajte', 'vrati', 'vratite', 'daj', 'dajte', 'ponudi', 'preporuci',
+        'cuj', 'reci', 'recite',
         // politeness and filler
         'molim', 'hvala', 'pozdrav', 'dobar', 'dobro', 'jutro', 'vece',
         'lijep', 'lijepo', 'me', 'mi', 'ti', 'vi', 'vas', 'nam', 'nas', 'ste',
         'sam', 'bih', 'teli', 'super', 'the', 'you', 'have', 'do', 'is', 'are', 'any',
+        // brand/listing grammar words. Keep these out of fuzzy brand
+        // matching: "brenda" is only one edit away from "Brondi".
+        'brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova',
+        'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca',
         // greetings - found 2026-08-26 on zed.hr: "Bok, imate li kabele za
         // laptop?" had "bok" survive as a real search token, which then
         // joined the bucketKey() alongside "kabel"/"laptop" and broke the
