@@ -337,6 +337,21 @@ class ChatService
             ];
         }
 
+        $conflictingPhoneSeriesReply = $this->conflictingPhoneSeriesReply($message);
+        if ($conflictingPhoneSeriesReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $conflictingPhoneSeriesReply);
+
+            return [
+                'reply'           => $conflictingPhoneSeriesReply,
+                'conversation_id' => $conversationId,
+                'products'        => [],
+                'more_url'        => null,
+                'quick_replies'   => $this->lastQuickReplies,
+                'brand_choices'   => [],
+            ];
+        }
+
         $directCodeProduct = $this->directProductByCode($message);
         if ($directCodeProduct !== null) {
             $reply = $this->singleProductReply($directCodeProduct, $message);
@@ -1419,6 +1434,34 @@ class ChatService
         return 'Klasične auto dijelove trenutno ne vidim u katalogu. '
             . 'Imamo auto dodatke/opremu poput auto punjača, držača, transmittera i auto akustike, '
             . 'ali ne rezervne dijelove za vozila.';
+    }
+
+    /**
+     * Customers sometimes combine a brand family and a model family that
+     * cannot exist together, e.g. "iPhone S25" (Apple + Samsung Galaxy S).
+     * Answer that plainly instead of selecting the nearest real iPhone.
+     *
+     * @param string $message
+     * @return string|null
+     */
+    private function conflictingPhoneSeriesReply($message)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\b(?:iphone|apple|ajfon)\b/u', $norm) !== 1
+            || preg_match('/\bs\s*(2[0-9]|3[0-9])\b/u', $norm, $m) !== 1
+        ) {
+            return null;
+        }
+
+        $series = 'S' . $m[1];
+        $this->lastQuickReplies = [
+            ['label' => 'iPhone modeli', 'query' => 'koje iPhone telefone imate'],
+            ['label' => 'Samsung Galaxy ' . $series, 'query' => 'Samsung Galaxy ' . $series],
+        ];
+
+        return 'Takav iPhone model ne postoji. "' . $series . '" je Samsung Galaxy serija, a iPhone je Apple linija. '
+            . 'Ako želite iPhone, mogu pokazati iPhone modele koje imamo; ako ste mislili na ' . $series
+            . ', mogu pokazati Samsung Galaxy ' . $series . ' modele.';
     }
 
     /**

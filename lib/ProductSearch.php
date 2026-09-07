@@ -96,6 +96,10 @@ class ProductSearch
         $query = Text::stripCatalogMetaPhrases($query);
         $query = preg_replace('/\bdj\b/iu', 'DJI', (string) $query);
         $query = $this->stripXiaomiRouterNoise($query);
+        if ($this->hasConflictingPhoneSeries($query)) {
+            return [];
+        }
+        $query = $this->normalizeGalaxySPhoneQuery($query);
 
         $sortIntent = Text::extractSortIntent($query);
         $query      = $sortIntent['query'];
@@ -742,6 +746,46 @@ class ProductSearch
 
         $query = preg_replace('/\bx\s*box\b/iu', ' ', (string) $query);
         return trim(preg_replace('/\s+/u', ' ', (string) $query));
+    }
+
+    /**
+     * "iPhone S25" mixes Apple's iPhone line with Samsung's Galaxy S series.
+     * Returning the nearest iPhone is worse than saying the requested product
+     * does not exist.
+     *
+     * @param string $query
+     * @return bool
+     */
+    private function hasConflictingPhoneSeries($query)
+    {
+        $norm = Text::normalize($query);
+        return preg_match('/\b(?:iphone|apple|ajfon)\b/u', $norm) === 1
+            && preg_match('/\bs\s*(?:2[0-9]|3[0-9])\b/u', $norm) === 1;
+    }
+
+    /**
+     * A bare "S25" is overwhelmingly a Samsung Galaxy phone request; hoco's
+     * BS25 speaker remains reachable through the actual model code "BS25".
+     *
+     * @param string $query
+     * @return string
+     */
+    private function normalizeGalaxySPhoneQuery($query)
+    {
+        $norm = Text::normalize($query);
+        if (preg_match('/\bs\s*(2[0-9]|3[0-9])\b/u', $norm, $m) !== 1) {
+            return $query;
+        }
+        if (preg_match('/\bbs\s*(2[0-9]|3[0-9])\b/u', $norm) === 1) {
+            return $query;
+        }
+        if (preg_match('/\b(?:samsung|galaxy|telefon\w*|mobitel\w*|smartphone\w*)\b/u', $norm) === 1
+            || trim($norm) === 's' . $m[1]
+        ) {
+            return 'Samsung Galaxy S' . $m[1];
+        }
+
+        return $query;
     }
 
     // -----------------------------------------------------------------------
