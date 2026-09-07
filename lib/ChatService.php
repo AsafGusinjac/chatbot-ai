@@ -2012,22 +2012,31 @@ class ChatService
             || $this->previousPetTopicMentioned()
             || $this->previousProductsWerePetProducts($conversationId);
         $asksFoodOrTreat = preg_match('/\b(?:hran\w*|poslastic\w*)\b/u', $norm) === 1;
+        $asksPool = $this->looksLikePetPoolRequest($norm);
+        $asksWaterOrPool = $this->looksLikePetWaterOrPoolRequest($norm);
 
         if (!$hasPetContext && !$hasPetWord) {
             return null;
         }
 
-        if (!$hasPetWord && !$asksFoodOrTreat) {
+        if (!$hasPetWord && !$asksFoodOrTreat && !$asksWaterOrPool) {
             return null;
         }
 
-        $products = $this->search->search('kućni ljubimci', [
+        $query = $asksWaterOrPool ? 'fontana za kućne ljubimce' : 'kućni ljubimci';
+        $products = $this->search->search($query, [
             'limit'              => (int) config_get('product_card_limit', 8),
             'in_stock_only'      => true,
             'wholesale_verified' => $this->wholesaleVerified,
         ]);
+        if ($asksWaterOrPool) {
+            $products = array_values(array_filter($products, [$this, 'isPetFountainProduct']));
+        }
 
         if ($products === []) {
+            if ($asksWaterOrPool) {
+                return 'Bazene za kućne ljubimce trenutno ne vidim kao posebnu kategoriju u katalogu.';
+            }
             return $asksFoodOrTreat
                 ? 'Hranu ili poslastice za pse trenutno ne vidim u katalogu.'
                 : 'Trenutno ne vidim artikle za kućne ljubimce u katalogu.';
@@ -2047,6 +2056,10 @@ class ChatService
 
         if ($asksFoodOrTreat) {
             $intro = 'Hranu ili poslastice za pse trenutno ne vidim u katalogu. Od opreme za kućne ljubimce imamo:';
+        } elseif ($asksPool) {
+            $intro = 'Bazene za kućne ljubimce ne vidim kao posebnu kategoriju, ali najbliže tome imamo fontane/pojilice za kućne ljubimce:';
+        } elseif ($asksWaterOrPool) {
+            $intro = 'Od fontana/pojilica za kućne ljubimce trenutno imamo:';
         } else {
             $intro = 'Za kućne ljubimce trenutno imamo opremu i uređaje iz kataloga:';
         }
@@ -2071,6 +2084,41 @@ class ChatService
         }
 
         return 1;
+    }
+
+    /**
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikePetWaterOrPoolRequest($norm)
+    {
+        return $this->looksLikePetPoolRequest($norm)
+            || preg_match('/\b(?:fontan\w*|pojilic\w*|voda|vodu|vode)\b/u', $norm) === 1;
+    }
+
+    /**
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikePetPoolRequest($norm)
+    {
+        return preg_match('/\bbazen\w*\b/u', $norm) === 1;
+    }
+
+    /**
+     * @param array $product
+     * @return bool
+     */
+    private function isPetFountainProduct(array $product)
+    {
+        $text = Text::normalize(
+            (isset($product['name']) ? (string) $product['name'] : '') . ' '
+            . (isset($product['model']) ? (string) $product['model'] : '') . ' '
+            . (isset($product['subcategory']) ? (string) $product['subcategory'] : '')
+        );
+
+        return preg_match('/\bfontan\w*\b/u', $text) === 1
+            && preg_match('/\b(?:filter\w*|ulozak\w*|rezervn\w*)\b/u', $text) !== 1;
     }
 
     /**
