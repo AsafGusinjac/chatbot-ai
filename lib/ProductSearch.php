@@ -95,6 +95,7 @@ class ProductSearch
 
         $query = Text::stripCatalogMetaPhrases($query);
         $query = preg_replace('/\bdj\b/iu', 'DJI', (string) $query);
+        $query = $this->normalizeDjiLitoAlias($query);
         $query = $this->stripXiaomiRouterNoise($query);
         if ($this->hasConflictingPhoneSeries($query)) {
             return [];
@@ -731,13 +732,33 @@ class ProductSearch
         }
 
         $clean = preg_replace(
-            '/\b(?:koliko|kolko|mu|joj|njemu|njega|njim|taj|ta|to|ovaj|ova|ovo|baterij\w*|punjenj\w*|autonomij\w*|traj\w*|izdrz\w*|izdrž\w*|drzi|drži|radi|rada|vrijeme|vreme|leta?|minut\w*|sati|sat\w*)\b/iu',
+            '/\b(?:koliko|kolikom|kolko|mu|joj|njemu|njega|njim|taj|ta|to|ovaj|ova|ovo|baterij\w*|punjenj\w*|autonomij\w*|traj\w*|izdrz\w*|izdrž\w*|drzi|drži|radi|rada|vrijeme|vreme|leta?|minut\w*|sati|sat\w*)\b/iu',
             ' ',
             (string) $query
         );
         $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
 
         return $clean !== '' ? $clean : $query;
+    }
+
+    /**
+     * The feed spells this drone family as "DJI Lito X1", while customers
+     * naturally type "DJI Lite X1". Do the correction only in a DJI/drone
+     * query so real "Lite" phones, consoles, purifiers and accessories stay
+     * untouched.
+     *
+     * @param string $query
+     * @return string
+     */
+    private function normalizeDjiLitoAlias($query)
+    {
+        $query = (string) $query;
+        $norm = Text::normalize($query);
+        if (preg_match('/\b(?:di|dji|dron\w*|drone\w*)\b/u', $norm) !== 1) {
+            return $query;
+        }
+
+        return preg_replace('/\blite\s+(x1|1)\b/iu', 'Lito $1', $query);
     }
 
     /**
