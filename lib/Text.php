@@ -153,6 +153,8 @@ class Text
         'cuj', 'reci', 'recite',
         // politeness and filler
         'molim', 'hvala', 'pozdrav', 'dobar', 'dobro', 'jutro', 'vece',
+        'odgovor', 'odgovoru', 'odgovora', 'nego', 'pitam', 'pitao', 'pitala',
+        'kakav', 'kakva', 'kakvo', 'kakve', 'kakvi', 'imal',
         'lijep', 'lijepo', 'me', 'mi', 'ti', 'vi', 'vas', 'nam', 'nas', 'ste',
         'sam', 'bih', 'teli', 'super', 'the', 'you', 'have', 'do', 'is', 'are', 'any',
         // brand/listing grammar words. Keep these out of fuzzy brand

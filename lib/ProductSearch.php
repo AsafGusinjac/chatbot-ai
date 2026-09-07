@@ -609,6 +609,24 @@ class ProductSearch
             return false;
         }
 
+        $norm = Text::normalize($brand);
+        if (in_array($norm, ['ok', 'oke', 'dobro', 'vazi', 'hvala', 'cao', 'pozdrav', 'ima', 'imal'], true)
+            || in_array($norm, ['brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova', 'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca'], true)
+            || $this->looksLikeProductTypeWord($norm)
+        ) {
+            return false;
+        }
+
+        foreach ($this->brandMap() as $candidate) {
+            if ((string) $candidate['norm'] === $norm) {
+                return ['id' => (int) $candidate['id'], 'name' => (string) $candidate['name']];
+            }
+        }
+
+        if (mb_strlen($norm) < 3) {
+            return false;
+        }
+
         $stmt = $this->pdo->prepare(
             'SELECT id, name FROM brands WHERE name LIKE ? ORDER BY CHAR_LENGTH(name) ASC LIMIT 1'
         );
@@ -616,13 +634,6 @@ class ProductSearch
         $row = $stmt->fetch();
         if ($row !== false) {
             return ['id' => (int) $row['id'], 'name' => (string) $row['name']];
-        }
-
-        $norm = Text::normalize($brand);
-        if (in_array($norm, ['brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova', 'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca'], true)
-            || $this->looksLikeProductTypeWord($norm)
-        ) {
-            return false;
         }
 
         $best = null;

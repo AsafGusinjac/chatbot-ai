@@ -276,6 +276,21 @@ class ChatService
             ];
         }
 
+        $conversationReply = $this->nonCatalogConversationReply($message);
+        if ($conversationReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $conversationReply);
+
+            return [
+                'reply'           => $conversationReply,
+                'conversation_id' => $conversationId,
+                'products'        => [],
+                'more_url'        => null,
+                'quick_replies'   => [],
+                'brand_choices'   => [],
+            ];
+        }
+
         $installmentAnswer = $this->installmentPurchaseAnswer($message);
         if ($installmentAnswer !== null) {
             $this->store->append($conversationId, 'user', $message);
@@ -348,6 +363,38 @@ class ChatService
                 'products'        => [],
                 'more_url'        => null,
                 'quick_replies'   => $this->lastQuickReplies,
+                'brand_choices'   => [],
+            ];
+        }
+
+        $missingIphoneModelReply = $this->missingIphoneModelReply($message, $conversationId);
+        if ($missingIphoneModelReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $missingIphoneModelReply);
+            $this->rememberLastProducts($conversationId);
+
+            return [
+                'reply'           => $missingIphoneModelReply,
+                'conversation_id' => $conversationId,
+                'products'        => $this->lastProducts,
+                'more_url'        => $this->lastMoreUrl,
+                'quick_replies'   => $this->lastQuickReplies,
+                'brand_choices'   => [],
+            ];
+        }
+
+        $generalDiscountReply = $this->generalDiscountReply($message);
+        if ($generalDiscountReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $generalDiscountReply);
+            $this->rememberLastProducts($conversationId);
+
+            return [
+                'reply'           => $generalDiscountReply,
+                'conversation_id' => $conversationId,
+                'products'        => $this->lastProducts,
+                'more_url'        => $this->lastMoreUrl,
+                'quick_replies'   => [],
                 'brand_choices'   => [],
             ];
         }
@@ -454,6 +501,21 @@ class ChatService
                 'products'        => [],
                 'more_url'        => null,
                 'quick_replies'   => [],
+            ];
+        }
+
+        $storeLocationReply = $this->storeLocationReply($message);
+        if ($storeLocationReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $storeLocationReply);
+
+            return [
+                'reply'           => $storeLocationReply,
+                'conversation_id' => $conversationId,
+                'products'        => [],
+                'more_url'        => null,
+                'quick_replies'   => [],
+                'brand_choices'   => [],
             ];
         }
 
@@ -1170,6 +1232,40 @@ class ChatService
     }
 
     /**
+     * Catch acknowledgements, complaints and casual reactions before a tiny
+     * word is treated as a brand or product. This protects transcripts like
+     * "ok" -> Nokia and "imas bugova" -> Bugatti/Buggy.
+     *
+     * @param string $message
+     * @return string|null
+     */
+    private function nonCatalogConversationReply($message)
+    {
+        $norm = Text::normalize($message);
+        if ($norm === '') {
+            return null;
+        }
+
+        if (preg_match('/\b(?:bug\w*|gresk\w*|grešk\w*|pogresn\w*|pogrešn\w*|krivo|netacn\w*|netačn\w*|ne\s+radi|nije\s+(?:dobro|dobo)|nije\s+tacno|nije\s+tačno|lose|loše)\b/u', $norm) === 1) {
+            return 'Hvala što ste javili. Izvinjavam se zbog pogrešnog odgovora. Napišite mi šta tačno tražite ili koji dio nije dobar, pa ću ponovo provjeriti u katalogu.';
+        }
+
+        if (preg_match('/^(?:(?:ha)+h?|(?:he)+h?|lol+)$/u', $norm) === 1) {
+            return 'Vidim da prethodni odgovor nije bio pogođen. Napišite mi šta tačno tražite i provjerit ću ponovo u katalogu.';
+        }
+
+        if (preg_match('/^(?:ok|oke|uredu|u\s+redu|dobro|dobo|vazi|važi|hvala|hvala\s+puno|super|cao|ćao|pozdrav|ima)$/u', $norm) === 1) {
+            if (preg_match('/\b(?:cijen\w*|cena|stanj\w*|garancij\w*|kup\w*|trazim|tražim|treba\w*|imate|imas|ima\s+li|popust\w*|akcij\w*|proizvod\w*|artik\w*)\b/u', $norm) === 1) {
+                return null;
+            }
+
+            return 'Tu sam ako vam zatreba provjera artikla, cijene, stanja, garancije ili dostave.';
+        }
+
+        return null;
+    }
+
+    /**
      * @param string $message
      * @return bool
      */
@@ -1181,6 +1277,106 @@ class ChatService
             '/\b(?:akcij\w*|popust\w*|snizen\w*|sniz\w*|rasprodaj\w*|promo\w*|promocij\w*)\b/u',
             $norm
         ) === 1;
+    }
+
+    /**
+     * "Imal popusta?", "ima li kakvih akcija?" and polite variants are
+     * catalog-wide promotion questions. Do not search for leftover filler
+     * words like "odgovoru", "imal" or "kakve" as product names.
+     *
+     * @param string $message
+     * @return string|null
+     */
+    private function generalDiscountReply($message)
+    {
+        if (!$this->looksLikeActionRequest($message)) {
+            return null;
+        }
+        if (!$this->looksLikeCatalogWideDiscountQuestion($message)) {
+            return null;
+        }
+
+        $query = $this->generalDiscountTopic($message);
+        if ($query !== '') {
+            return null;
+        }
+
+        $products = $this->search->search('', [
+            'limit'              => (int) config_get('product_card_limit', 8),
+            'in_stock_only'      => true,
+            'sort'               => 'discount_desc',
+            'action_only'        => true,
+            'wholesale_verified' => $this->wholesaleVerified,
+        ]);
+
+        if ($products === []) {
+            return 'Trenutno ne vidim aktivne akcijske ponude u katalogu.';
+        }
+
+        $this->lastProducts = $products;
+        $this->lastMoreUrl  = $this->search->shopListingUrlForResults($products, 'discount_desc');
+
+        $lines = [];
+        foreach ($products as $product) {
+            $lines[] = $this->productListLine($product);
+        }
+
+        return 'Evo nekoliko akcijskih ponuda iz našeg asortimana koje bi vas mogle zanimati:'
+            . "\n" . implode("\n", $lines) . "\n\n"
+            . $this->friendlyProductClosing($products);
+    }
+
+    /**
+     * @param string $message
+     * @return bool
+     */
+    private function looksLikeCatalogWideDiscountQuestion($message)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\bpopust\w*\b/u', $norm) === 1) {
+            return true;
+        }
+        if (preg_match('/\b(?:koje|kakv\w*|sta|sto)\b/u', $norm) === 1
+            && preg_match('/\b(?:akcij\w*|snizen\w*|sniz\w*|rasprodaj\w*|promo\w*)\b/u', $norm) === 1
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $message
+     * @return string
+     */
+    private function generalDiscountTopic($message)
+    {
+        $query = $this->stripActionWords($message);
+        $query = preg_replace(
+            '/\b(?:hvala|odgovor\w*|nego|pitam|pitao|pitala|kakv\w*|mozes|možeš|moze|može|imas|ima|imal|imate|li|mi|jos|još|neki|neke|neka|nesto|nešto|ponud\w*|proizvod\w*|artik\w*|stvar\w*)\b/iu',
+            ' ',
+            (string) $query
+        );
+        $query = trim(preg_replace('/\s+/u', ' ', (string) $query));
+
+        return Text::meaningfulTokens($query) === [] ? '' : $query;
+    }
+
+    /**
+     * @param string $message
+     * @return string|null
+     */
+    private function storeLocationReply($message)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\b(?:radnj\w*|poslovnic\w*|prodavnic\w*|lokacij\w*|filijal\w*)\b/u', $norm) !== 1) {
+            return null;
+        }
+        if (preg_match('/\bgornj\w*\s+vakuf\w*\b/u', $norm) !== 1) {
+            return null;
+        }
+
+        return 'Da, Digitalis ima poslovnicu u Gornjem Vakufu. Za tačnu adresu i radno vrijeme najbolje je nazvati 0800 22 432.';
     }
 
     /**
@@ -1462,6 +1658,101 @@ class ChatService
         return 'Takav iPhone model ne postoji. "' . $series . '" je Samsung Galaxy serija, a iPhone je Apple linija. '
             . 'Ako želite iPhone, mogu pokazati iPhone modele koje imamo; ako ste mislili na ' . $series
             . ', mogu pokazati Samsung Galaxy ' . $series . ' modele.';
+    }
+
+    /**
+     * If a customer names an iPhone model number, only claim it exists when
+     * the exact iPhone generation is in the catalog. Similar iPhones are
+     * useful alternatives, but they must not be presented as "iPhone 18".
+     *
+     * @param string   $message
+     * @param int|null $conversationId
+     * @return string|null
+     */
+    private function missingIphoneModelReply($message, $conversationId = null)
+    {
+        $norm = Text::normalize($message);
+        if (preg_match('/\b(?:iphone|ajfon)\s*(\d{1,2})\b/u', $norm, $m) !== 1) {
+            return null;
+        }
+
+        $number = (int) $m[1];
+        if ($number <= 0) {
+            return null;
+        }
+
+        $exact = $this->search->search('iPhone ' . $number, [
+            'limit'              => 5,
+            'in_stock_only'      => true,
+            'wholesale_verified' => $this->wholesaleVerified,
+        ]);
+        foreach ($exact as $product) {
+            if ($this->productMatchesIphoneNumber($product, $number)) {
+                return null;
+            }
+        }
+
+        $alternatives = $this->search->search('iPhone', [
+            'limit'              => 12,
+            'in_stock_only'      => true,
+            'sort'               => 'price_desc',
+            'wholesale_verified' => $this->wholesaleVerified,
+        ]);
+        $alternatives = array_slice($this->uniqueProductsByDisplay($alternatives), 0, min(5, (int) config_get('product_card_limit', 8)));
+
+        $this->lastProducts = $alternatives;
+        $this->lastMoreUrl  = $alternatives !== [] ? $this->search->shopListingUrlForResults($alternatives, 'price_desc') : null;
+        $this->lastQuickReplies = [
+            ['label' => 'iPhone modeli', 'query' => 'koje iPhone telefone imate'],
+            ['label' => 'Samsung S serija', 'query' => 'koje Samsung Galaxy S telefone imate'],
+        ];
+
+        if ($alternatives === []) {
+            return 'iPhone ' . $number . ' trenutno ne vidim u katalogu.';
+        }
+
+        $lines = [];
+        foreach ($alternatives as $product) {
+            $lines[] = $this->productListLine($product);
+        }
+
+        return 'iPhone ' . $number . ' trenutno ne vidim u katalogu. Od iPhone modela trenutno vidim:'
+            . "\n" . implode("\n", $lines);
+    }
+
+    /**
+     * @param array $product
+     * @param int   $number
+     * @return bool
+     */
+    private function productMatchesIphoneNumber(array $product, $number)
+    {
+        $text = Text::normalize(
+            (isset($product['name']) ? (string) $product['name'] : '') . ' '
+            . (isset($product['model']) ? (string) $product['model'] : '')
+        );
+
+        return preg_match('/\biphone\s+' . (int) $number . '\b/u', $text) === 1;
+    }
+
+    /**
+     * @param array[] $products
+     * @return array[]
+     */
+    private function uniqueProductsByDisplay(array $products)
+    {
+        $unique = [];
+        $seen = [];
+        foreach ($products as $product) {
+            $key = Text::normalize($this->productListLine($product));
+            if ($key === '' || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $unique[] = $product;
+        }
+
+        return $unique;
     }
 
     /**
@@ -2014,13 +2305,19 @@ class ChatService
         $asksFoodOrTreat = preg_match('/\b(?:hran\w*|poslastic\w*)\b/u', $norm) === 1;
         $asksPool = $this->looksLikePetPoolRequest($norm);
         $asksWaterOrPool = $this->looksLikePetWaterOrPoolRequest($norm);
+        $asksTracker = $this->looksLikePetTrackerQuestion($norm);
+        $asksOffer = preg_match('/\b(?:sta|sto|kakv\w*|ponud\w*|imas|imate|proizvod\w*|artik\w*)\b/u', $norm) === 1;
 
         if (!$hasPetContext && !$hasPetWord) {
             return null;
         }
 
-        if (!$hasPetWord && !$asksFoodOrTreat && !$asksWaterOrPool) {
+        if (!$hasPetWord && !$asksFoodOrTreat && !$asksWaterOrPool && !$asksTracker && !$asksOffer) {
             return null;
+        }
+
+        if ($asksTracker) {
+            return $this->petTrackerReply();
         }
 
         $query = $asksWaterOrPool ? 'fontana za kućne ljubimce' : 'kućni ljubimci';
@@ -2119,6 +2416,61 @@ class ChatService
 
         return preg_match('/\bfontan\w*\b/u', $text) === 1
             && preg_match('/\b(?:filter\w*|ulozak\w*|rezervn\w*)\b/u', $text) !== 1;
+    }
+
+    /**
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikePetTrackerQuestion($norm)
+    {
+        return preg_match('/\b(?:gps|tracker\w*|treker\w*|lokator\w*)\b/u', $norm) === 1
+            && preg_match('/\b(?:kako|funkcion\w*|radi|koristi|upotreblj\w*|objasni|opis\w*|detalj\w*)\b/u', $norm) === 1;
+    }
+
+    /**
+     * @return string
+     */
+    private function petTrackerReply()
+    {
+        $products = $this->search->search('GPS tracker za kućne ljubimce', [
+            'limit'              => 4,
+            'in_stock_only'      => true,
+            'wholesale_verified' => $this->wholesaleVerified,
+        ]);
+        $products = array_values(array_filter($products, [$this, 'isPetTrackerProduct']));
+
+        $this->lastProducts = $products;
+        $this->lastMoreUrl  = $products !== [] ? $this->search->shopListingUrlForResults($products) : null;
+
+        $base = 'GPS tracker za kućne ljubimce služi za praćenje ljubimca preko uređaja koji nosi na ogrlici ili uz sebe. '
+            . 'Iz kataloga mogu potvrditi cijenu, stanje i garanciju; za tačne upute oko aplikacije, SIM kartice i podešavanja najbolje je provjeriti detalje na stranici proizvoda ili pitati prodaju.';
+
+        if ($products === []) {
+            return $base;
+        }
+
+        $lines = [];
+        foreach ($products as $product) {
+            $lines[] = $this->productListLine($product);
+        }
+
+        return $base . "\n\nTrenutno vidim ove modele:\n" . implode("\n", $lines);
+    }
+
+    /**
+     * @param array $product
+     * @return bool
+     */
+    private function isPetTrackerProduct(array $product)
+    {
+        $text = Text::normalize(
+            (isset($product['name']) ? (string) $product['name'] : '') . ' '
+            . (isset($product['model']) ? (string) $product['model'] : '') . ' '
+            . (isset($product['subcategory']) ? (string) $product['subcategory'] : '')
+        );
+
+        return preg_match('/\b(?:gps|tracker\w*|treker\w*|lokator\w*)\b/u', $text) === 1;
     }
 
     /**
@@ -3473,6 +3825,16 @@ class ChatService
     {
         $norm = Text::normalize($message);
 
+        if ($this->looksLikeActionRequest($message) && $this->looksLikeCurrentProductReference($norm)) {
+            $id = $this->store->selectedProductId($conversationId);
+            if ($id !== null) {
+                $product = $this->search->findById($id);
+                if ($product !== null) {
+                    return $product;
+                }
+            }
+        }
+
         // A bare digit ordinal ("2.") is deliberately NOT resolved here
         // (word ordinals like "drugi" still are, via
         // looksLikeProductDetailRequest below) - it is genuinely ambiguous
@@ -3527,6 +3889,15 @@ class ChatService
         }
 
         return null;
+    }
+
+    /**
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikeCurrentProductReference($norm)
+    {
+        return preg_match('/\b(?:ovaj|ova|ovo|ovog|taj|ta|to|tog|artikal|artikla|proizvod|proizvoda|ga|njega|njemu)\b/u', $norm) === 1;
     }
 
     /**
@@ -3946,6 +4317,7 @@ class ChatService
 
         return $this->looksLikeStockQuestion($message)
             || $this->looksLikeBatteryRuntimeQuestion($message)
+            || $this->looksLikeActionRequest($message)
             || preg_match('/\b(?:stanj\w*|lager\w*|dostupn\w*|cijen\w*|cena|kosta\w*|koliko|garancij\w*|jamstv\w*)\b/u', $norm) === 1;
     }
 
@@ -4001,6 +4373,18 @@ class ChatService
             return !empty($product['in_stock'])
                 ? $availability . $cartHint
                 : $availability;
+        }
+
+        if ($this->looksLikeActionRequest($message)) {
+            if ($isAction && $actionPrice !== null) {
+                $before = isset($product['price_before']) && $product['price_before'] !== null
+                    ? ' Prije akcije cijena je bila ' . $this->formatKm((float) $product['price_before']) . '.'
+                    : '';
+
+                return 'Da, ovaj artikal je trenutno na akciji. Akcijska cijena je ' . $actionPrice . '.' . $before . ' ' . $availability . $cartHint;
+            }
+
+            return 'Ovaj artikal trenutno ne vidim kao akcijski artikal. Redovna cijena je ' . $shownPrice . '. ' . $availability . $cartHint;
         }
 
         if (($action === 'price' || preg_match('/\b(?:cijen\w*|cena|kosta\w*|koliko)\b/u', $norm) === 1)
