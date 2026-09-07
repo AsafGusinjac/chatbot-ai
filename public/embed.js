@@ -953,6 +953,20 @@
         btn.textContent = '✓';
     }
 
+    function setCartButtonUnavailable(btn) {
+        btn.disabled = true;
+        btn.title = 'Korpa nije povezana na ovoj stranici';
+        btn.setAttribute('aria-label', 'Korpa nije povezana na ovoj stranici');
+
+        var label = btn.querySelector('span');
+        if (label) {
+            label.textContent = 'Korpa nije povezana';
+            return;
+        }
+
+        btn.textContent = '!';
+    }
+
     function hydrateTranscriptControls() {
         Array.prototype.forEach.call(els.msgs.querySelectorAll('.qreplies'), function (wrap) {
             Array.prototype.forEach.call(wrap.querySelectorAll('.chip'), function (chip) {
@@ -1586,9 +1600,9 @@
      *   });
      *
      * If nothing calls preventDefault() - no listener registered at all, or
-     * a listener that does not handle it - dispatchEvent() returns true and
-     * the widget falls back to opening the product page in a new tab, the
-     * same safe fallback as before.
+     * a listener that does not handle it - the widget shows that cart is not
+     * connected. "Detalji" already opens the product page; the cart button
+     * should not unexpectedly open a new tab.
      */
     function addToCart(product, btn) {
         var detail = {
@@ -1603,7 +1617,7 @@
             qty: 1
         };
 
-        var notCancelled = window.dispatchEvent(new CustomEvent('dstorechat:addtocart', {
+        var notCancelled = window.dispatchEvent(safeCustomEvent('dstorechat:addtocart', {
             detail: detail,
             cancelable: true
         }));
@@ -1615,9 +1629,22 @@
             return;
         }
 
-        if (product.url) {
-            window.open(product.url, '_blank', 'noopener');
+        setCartButtonUnavailable(btn);
+    }
+
+    function safeCustomEvent(name, options) {
+        if (typeof CustomEvent === 'function') {
+            return new CustomEvent(name, options);
         }
+
+        var event = document.createEvent('CustomEvent');
+        event.initCustomEvent(
+            name,
+            !!(options && options.bubbles),
+            !!(options && options.cancelable),
+            options ? options.detail : null
+        );
+        return event;
     }
 
     function cartIcon() {

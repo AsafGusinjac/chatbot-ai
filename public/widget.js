@@ -634,22 +634,51 @@
     }
 
     function addToCart(product, btn) {
-        var shop = window.webshop;
+        var detail = {
+            product: {
+                id: product.id,
+                name: product.name,
+                model: product.model || null,
+                ean: product.ean || null,
+                price: product.price,
+                url: product.url || null
+            },
+            qty: 1
+        };
 
-        if (shop && typeof shop.cart_add === 'function') {
-            try {
-                shop.cart_add(product.id, 1, null);
-                btn.textContent = 'Dodano ✓';
-                btn.disabled = true;
-                return;
-            } catch (e) {
-                // Fall back to opening the product page below.
-            }
+        var notCancelled = window.dispatchEvent(safeCustomEvent('dstorechat:addtocart', {
+            detail: detail,
+            cancelable: true
+        }));
+
+        if (!notCancelled) {
+            btn.textContent = 'Dodano ✓';
+            btn.disabled = true;
+            return;
         }
 
-        if (product.url) {
-            window.open(product.url, '_blank', 'noopener');
+        btn.disabled = true;
+        btn.title = 'Korpa nije povezana na ovoj stranici';
+        btn.setAttribute('aria-label', 'Korpa nije povezana na ovoj stranici');
+        while (btn.firstChild) {
+            btn.removeChild(btn.firstChild);
         }
+        btn.textContent = '!';
+    }
+
+    function safeCustomEvent(name, options) {
+        if (typeof CustomEvent === 'function') {
+            return new CustomEvent(name, options);
+        }
+
+        var event = document.createEvent('CustomEvent');
+        event.initCustomEvent(
+            name,
+            !!(options && options.bubbles),
+            !!(options && options.cancelable),
+            options ? options.detail : null
+        );
+        return event;
     }
 
     function cartIcon() {

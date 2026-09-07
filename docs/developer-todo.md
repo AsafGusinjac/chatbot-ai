@@ -184,9 +184,8 @@ Nakon toga klik na "Dodaj u korpu" u chatu treba u Console ispisati product
 podatke. Tek onda taj `console.log` zamijeniti stvarnim AJAX/funkcijom za korpu.
 
 Ako ovaj listener ne dodaš (ili ga dodaš ali ne pozoveš `preventDefault()`),
-widget i dalje radi — samo otvara stranicu artikla u novom tabu umjesto
-direktnog dodavanja u korpu. Nije blokirajuće, ali je bolje iskustvo ako se
-implementira.
+widget neće sam otvarati stranicu artikla. Dugme će prikazati da korpa nije
+povezana na toj stranici. Link za proizvod već postoji kroz dugme "Detalji".
 
 ## 4. Prijava ulogovanog veleprodajnog kupca (samo digitalis.ba, zed.hr, optibox.rs)
 
