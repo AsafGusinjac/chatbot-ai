@@ -83,6 +83,12 @@ class Text
         // catalog root before tokenization.
         $text = preg_replace('/\bsud(?:e|a|u|em|ima|ovi|ove|ova|ovima)?\b/u', 'posude', $text);
 
+        // Common storefront spelling: customers write "xiomi" and localised
+        // "ruter", while product names/API mostly use "Xiaomi" and "Router".
+        $text = preg_replace('/\bxiomi\b/u', 'xiaomi', $text);
+        $text = preg_replace('/\bruter\w*\b/u', 'router', $text);
+        $text = preg_replace('/\bmodem\w*\b/u', 'wireless modem router', $text);
+
         // Anything that is not a letter or digit becomes a space, so "RG-6",
         // "RG6" and "RG 6" all tokenize alike.
         $text = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text);
@@ -353,6 +359,10 @@ class Text
         // hyphen becomes a space in normalize()), but customers type it as
         // one word.
         $normalized = preg_replace('/\bantivirus\w*\b/u', 'anti virus', $normalized);
+
+        // "3-ica"/"trica" style suffixes are colloquial ordinal wording, not
+        // a searchable product token. The digit itself is kept by normalize().
+        $normalized = preg_replace('/\b(?:ica|trica)\b/u', ' ', $normalized);
 
         // "buzilica" is a very common misspelling of "bušilica" (drill).
         $normalized = preg_replace('/\bbuzilic(\w*)\b/u', 'busilic$1', $normalized);

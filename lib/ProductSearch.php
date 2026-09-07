@@ -95,6 +95,7 @@ class ProductSearch
 
         $query = Text::stripCatalogMetaPhrases($query);
         $query = preg_replace('/\bdj\b/iu', 'DJI', (string) $query);
+        $query = $this->stripXiaomiRouterNoise($query);
 
         $sortIntent = Text::extractSortIntent($query);
         $query      = $sortIntent['query'];
@@ -614,7 +615,9 @@ class ProductSearch
         }
 
         $norm = Text::normalize($brand);
-        if (in_array($norm, ['brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova', 'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca'], true)) {
+        if (in_array($norm, ['brend', 'brenda', 'brendu', 'brendom', 'brendovi', 'brendova', 'brand', 'marka', 'marke', 'marku', 'proizvodac', 'proizvodaca'], true)
+            || $this->looksLikeProductTypeWord($norm)
+        ) {
             return false;
         }
 
@@ -641,6 +644,21 @@ class ProductSearch
         }
 
         return false;
+    }
+
+    /**
+     * Do not typo-correct real product words into brands ("modem" -> Midea,
+     * "ruter" -> Razer). Exact brand matches still work before this guard.
+     *
+     * @param string $norm
+     * @return bool
+     */
+    private function looksLikeProductTypeWord($norm)
+    {
+        return preg_match(
+            '/\b(?:modem\w*|router\w*|switch\w*|repetitor\w*|extender\w*|kartic\w*|adapter\w*|kabl\w*|kabel\w*|mis|misa|misev\w*|tastatur\w*|slusalic\w*|printer\w*|skener\w*|telefon\w*|mobitel\w*|laptop\w*|monitor\w*|televizor\w*)\b/u',
+            $norm
+        ) === 1;
     }
 
     /**
@@ -705,6 +723,25 @@ class ProductSearch
         $clean = trim(preg_replace('/\s+/u', ' ', (string) $clean));
 
         return $clean !== '' ? $clean : $query;
+    }
+
+    /**
+     * A customer report showed "X BOX RUTER 3-ica xiomi": the intended item is
+     * a Xiaomi router, while "x box" is speech/typing noise that otherwise
+     * routes the query toward game consoles or blocks router results.
+     *
+     * @param string $query
+     * @return string
+     */
+    private function stripXiaomiRouterNoise($query)
+    {
+        $norm = Text::normalize($query);
+        if (preg_match('/\bxiaomi\b/u', $norm) !== 1 || preg_match('/\brouter\b/u', $norm) !== 1) {
+            return $query;
+        }
+
+        $query = preg_replace('/\bx\s*box\b/iu', ' ', (string) $query);
+        return trim(preg_replace('/\s+/u', ' ', (string) $query));
     }
 
     // -----------------------------------------------------------------------
@@ -2565,7 +2602,7 @@ class ProductSearch
         } elseif ($name === 'router') {
             // "Ruter" (single r) never appears in a product name here -
             // "Router" does, and stays.
-            $norm = preg_replace('/\bruter\w*\b/u', ' ', $norm);
+            $norm = preg_replace('/\brouter\w*\b/u', ' ', $norm);
         } elseif ($name === 'elektricni romobili') {
             // "Trotinet" is a common regional term for the same scooter and
             // never appears in a product name here - "romobil" does, and
@@ -4059,6 +4096,12 @@ class ProductSearch
             'mrezni switch' => ['type' => 'subcategory', 'name' => 'Switch', 'parent' => 'Ethernet'],
             'mrezni ruter' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
             'ruter mrezni' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'mrezni router' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'router mrezni' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'modem' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'modemi' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'modem router' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
+            'router modem' => ['type' => 'subcategory', 'name' => 'Router', 'parent' => 'Ethernet'],
             // Every real product here is named "Gamepad", never "kontroler" -
             // the word customers actually use. Only wire the platform-specific
             // phrasings, not bare "kontroler" (too generic - also used for
