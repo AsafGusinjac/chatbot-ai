@@ -504,6 +504,21 @@ class ChatService
             ];
         }
 
+        $companyInfoReply = $this->companyInfoReply($message);
+        if ($companyInfoReply !== null) {
+            $this->store->append($conversationId, 'user', $message);
+            $this->store->append($conversationId, 'assistant', $companyInfoReply);
+
+            return [
+                'reply'           => $companyInfoReply,
+                'conversation_id' => $conversationId,
+                'products'        => [],
+                'more_url'        => null,
+                'quick_replies'   => [],
+                'brand_choices'   => [],
+            ];
+        }
+
         $storeLocationReply = $this->storeLocationReply($message);
         if ($storeLocationReply !== null) {
             $this->store->append($conversationId, 'user', $message);
@@ -1246,7 +1261,7 @@ class ChatService
             return null;
         }
 
-        if (preg_match('/\b(?:bug\w*|gresk\w*|grešk\w*|pogresn\w*|pogrešn\w*|krivo|netacn\w*|netačn\w*|ne\s+radi|nije\s+(?:dobro|dobo)|nije\s+tacno|nije\s+tačno|lose|loše)\b/u', $norm) === 1) {
+        if (preg_match('/\b(?:bug(?:ova|ove|ovi|om|u)?|gresk\w*|grešk\w*|pogresn\w*|pogrešn\w*|krivo|netacn\w*|netačn\w*|ne\s+radi|nije\s+(?:dobro|dobo)|nije\s+tacno|nije\s+tačno|lose|loše)\b/u', $norm) === 1) {
             return 'Hvala što ste javili. Izvinjavam se zbog pogrešnog odgovora. Napišite mi šta tačno tražite ili koji dio nije dobar, pa ću ponovo provjeriti u katalogu.';
         }
 
@@ -1368,15 +1383,142 @@ class ChatService
      */
     private function storeLocationReply($message)
     {
+        if (!$this->isDigitalisStorefront()) {
+            return null;
+        }
+
         $norm = Text::normalize($message);
         if (preg_match('/\b(?:radnj\w*|poslovnic\w*|prodavnic\w*|lokacij\w*|filijal\w*)\b/u', $norm) !== 1) {
             return null;
         }
-        if (preg_match('/\bgornj\w*\s+vakuf\w*\b/u', $norm) !== 1) {
+
+        $branches = $this->digitalisBranchesForMention($norm);
+        if (count($branches) === 1) {
+            $branch = $branches[0];
+            return 'Da, Digitalis/D-STORE ima poslovnicu: ' . $branch['name'] . ', ' . $branch['address']
+                . '. Telefon: ' . $branch['phone'] . '.';
+        }
+        if (count($branches) > 1) {
+            $lines = [];
+            foreach ($branches as $branch) {
+                $lines[] = '- ' . $branch['name'] . ', ' . $branch['address'] . ', telefon ' . $branch['phone'] . '.';
+            }
+
+            return "Da, Digitalis/D-STORE ima više poslovnica za taj grad:\n" . implode("\n", $lines);
+        }
+
+        if (preg_match('/\b(?:gdje|gde|koje|kojim|spisak|lista|sve|imate|nalaz\w*)\b/u', $norm) !== 1) {
             return null;
         }
 
-        return 'Da, Digitalis ima poslovnicu u Gornjem Vakufu. Za tačnu adresu i radno vrijeme najbolje je nazvati 0800 22 432.';
+        $cities = [];
+        foreach ($this->digitalisBranches() as $branch) {
+            $city = (string) $branch['city'];
+            if (!in_array($city, $cities, true)) {
+                $cities[] = $city;
+            }
+        }
+
+        return 'Digitalis/D-STORE trenutno ima 19 maloprodajnih objekata. Poslovnice su u: '
+            . $this->formatOptionList($cities)
+            . '. Ako želite, napišite grad i mogu vam dati adresu i telefon te poslovnice.';
+    }
+
+    /**
+     * @param string $message
+     * @return string|null
+     */
+    private function companyInfoReply($message)
+    {
+        if (!$this->isDigitalisStorefront()) {
+            return null;
+        }
+
+        $norm = Text::normalize($message);
+        $asksAge = preg_match('/\b(?:koliko\s+dugo|od\s+kad|otkad|kada\s+ste\s+osnovani|kad\s+ste\s+osnovani|osnovan\w*|iskustv\w*|radite|poslujete)\b/u', $norm) === 1
+            && preg_match('/\b(?:radite|poslujete|osnovan\w*|iskustv\w*|digitalis|firma|kompanij\w*)\b/u', $norm) === 1;
+
+        if (!$asksAge) {
+            return null;
+        }
+
+        return 'Digitalis d.o.o. je osnovan 2001. godine i ima više od dvije decenije iskustva u prodaji i distribuciji tehničke robe u Bosni i Hercegovini. Prvi D-STORE maloprodajni objekat otvoren je 2014. godine.';
+    }
+
+    /**
+     * @return bool
+     */
+    private function isDigitalisStorefront()
+    {
+        $key = Text::normalize($this->webshopKey);
+        if (in_array($key, ['digitalis', 'dstore', 'd store'], true)) {
+            return true;
+        }
+
+        $store = Text::normalize((string) config_get('store_name', ''));
+        return in_array($store, ['digitalis', 'd store', 'dstore'], true);
+    }
+
+    /**
+     * @param string $norm
+     * @return array<int,array{name:string,city:string,address:string,phone:string,aliases:string[]}>
+     */
+    private function digitalisBranchesForMention($norm)
+    {
+        $candidates = [];
+        $branches = $this->digitalisBranches();
+        foreach ($branches as $index => $branch) {
+            foreach ($branch['aliases'] as $alias) {
+                $candidates[] = ['alias' => $alias, 'index' => $index, 'branch' => $branch];
+            }
+        }
+        usort($candidates, function ($a, $b) {
+            return mb_strlen($b['alias']) <=> mb_strlen($a['alias']);
+        });
+
+        foreach ($candidates as $candidate) {
+            if (preg_match('/\b' . preg_quote($candidate['alias'], '/') . '\b/u', $norm) === 1) {
+                $city = Text::normalize((string) $candidate['branch']['city']);
+                $matched = [];
+                foreach ($branches as $branch) {
+                    if (Text::normalize((string) $branch['city']) === $city) {
+                        $matched[] = $branch;
+                    }
+                }
+
+                return $matched;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<int,array{name:string,city:string,address:string,phone:string,aliases:string[]}>
+     */
+    private function digitalisBranches()
+    {
+        return [
+            ['name' => 'PJ Travnik', 'city' => 'Travnik', 'address' => 'Dolac n/L bb', 'phone' => '030 595 341', 'aliases' => ['travnik', 'travniku', 'dolac', 'dolac na lasvi']],
+            ['name' => 'PJ Travnik Centar', 'city' => 'Travnik', 'address' => 'Bosanska 58', 'phone' => '030 536 957', 'aliases' => ['travnik', 'travniku', 'travnik centar', 'bosanska']],
+            ['name' => 'PJ Novi Travnik', 'city' => 'Novi Travnik', 'address' => 'Centar TD (Konzum)', 'phone' => '030 790 908', 'aliases' => ['novi travnik', 'novom travniku']],
+            ['name' => 'PJ Turbe', 'city' => 'Turbe', 'address' => 'Bosanska bb', 'phone' => '061 956 403', 'aliases' => ['turbe']],
+            ['name' => 'PJ Bugojno', 'city' => 'Bugojno', 'address' => 'Nugle II', 'phone' => '030 251 347', 'aliases' => ['bugojno', 'bugojnu']],
+            ['name' => 'PJ Bugojno 2', 'city' => 'Bugojno', 'address' => 'Kulina bana 1', 'phone' => '030 276 455', 'aliases' => ['bugojno', 'bugojnu', 'bugojno 2', 'bugojno ii']],
+            ['name' => 'PJ Donji Vakuf', 'city' => 'Donji Vakuf', 'address' => '770. slavne brdske brigade', 'phone' => '030 205 686', 'aliases' => ['donji vakuf', 'donjem vakufu']],
+            ['name' => 'PJ Gornji Vakuf', 'city' => 'Gornji Vakuf', 'address' => 'Gradska bb', 'phone' => '030 266 051', 'aliases' => ['gornji vakuf', 'gornjem vakufu']],
+            ['name' => 'PJ Jajce', 'city' => 'Jajce', 'address' => 'Trgovački centar BINGO', 'phone' => '030 276 750', 'aliases' => ['jajce', 'jajcu']],
+            ['name' => 'PJ Jajce II', 'city' => 'Jajce', 'address' => 'Donje Pijavice bb', 'phone' => '062 343 432', 'aliases' => ['jajce', 'jajcu', 'jajce ii', 'jajce 2']],
+            ['name' => 'PJ Kakanj', 'city' => 'Kakanj', 'address' => '311. Lahke brigade bb', 'phone' => '061 304 001', 'aliases' => ['kakanj', 'kaknju']],
+            ['name' => 'PJ Busovača', 'city' => 'Busovača', 'address' => 'Zagrebačka bb', 'phone' => '061 190 120', 'aliases' => ['busovaca', 'busovaci']],
+            ['name' => 'PJ Kiseljak', 'city' => 'Kiseljak', 'address' => 'Zagrebačka br. 3', 'phone' => '030 871 195', 'aliases' => ['kiseljak', 'kiseljaku']],
+            ['name' => 'PJ Vitez', 'city' => 'Vitez', 'address' => 'Kralja Tvrtka bb', 'phone' => '030 710 485', 'aliases' => ['vitez', 'vitezu']],
+            ['name' => 'PJ Vitez II', 'city' => 'Vitez', 'address' => 'Trgovački centar BELAMIONIX', 'phone' => '030 294 303', 'aliases' => ['vitez', 'vitezu', 'vitez ii', 'vitez 2']],
+            ['name' => 'PJ Ilijaš', 'city' => 'Ilijaš', 'address' => 'Podlugovi bb', 'phone' => '033 670 166', 'aliases' => ['ilijas', 'ilijasu']],
+            ['name' => 'PJ Zenica', 'city' => 'Zenica', 'address' => 'Željezarska bb', 'phone' => '062 133 551', 'aliases' => ['zenica', 'zenici']],
+            ['name' => 'PJ Zenica II', 'city' => 'Zenica', 'address' => 'Aska Borića bb', 'phone' => '032 222 525', 'aliases' => ['zenica', 'zenici', 'zenica ii', 'zenica 2']],
+            ['name' => 'PJ Gračanica', 'city' => 'Gračanica', 'address' => 'Branilaca grada bb', 'phone' => '035 214 110', 'aliases' => ['gracanica', 'gracanici']],
+        ];
     }
 
     /**

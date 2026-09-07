@@ -5,9 +5,13 @@
 
 ## About Digitalis
 
-Digitalis d.o.o. is an electronics retailer and distributor in central Bosnia, with retail branches in Novi Travnik, Travnik, Bugojno, Jajce, Zenica and other towns.
+Digitalis d.o.o. is an electronics retailer and distributor in central Bosnia. The company was founded in 2001 and has more than two decades of experience selling and distributing technical goods in Bosnia and Herzegovina.
 
-We carry roughly 10,000 products across: household appliances, PC and gaming, mobile devices, home and tools, energy, TV and satellite equipment, air conditioning and heating, security and surveillance, cables, and audio.
+The first D-STORE retail branch was opened in 2014.
+
+Today Digitalis works through wholesale, distribution, the D-STORE retail network and the web shop. Digitalis/D-STORE has 19 retail branches.
+
+We carry products across: televisions, audio/video, white goods, small household appliances, mobile phones and accessories, computers and peripherals, cookware and household products, memory devices, cables, connectors, alarm systems, video surveillance, consumer electronics and other products from known brands.
 
 Website: https://digitalis.ba
 
@@ -23,6 +27,57 @@ Phone: 062 989 770
 Email: digitalis.servis@gmail.com
 
 Head office: Mehmeda Spaha 2A/30, 72290 Novi Travnik
+
+## Retail branches / poslovnice
+
+If a customer asks where Digitalis/D-STORE has branches, say there are 19 retail branches and list the towns briefly. If they ask for a specific town, give the exact branch address and phone from this list. Do not invent working hours; for working hours, tell them to call the branch or 0800 22 432.
+
+Travnik:
+- PJ Travnik, Dolac n/L bb, phone 030 595 341.
+- PJ Travnik Centar, Bosanska 58, phone 030 536 957.
+
+Novi Travnik:
+- PJ Novi Travnik, Centar TD (Konzum), phone 030 790 908.
+
+Turbe:
+- PJ Turbe, Bosanska bb, phone 061 956 403.
+
+Bugojno:
+- PJ Bugojno, Nugle II, phone 030 251 347.
+- PJ Bugojno 2, Kulina bana 1, phone 030 276 455.
+
+Donji Vakuf:
+- PJ Donji Vakuf, 770. slavne brdske brigade, phone 030 205 686.
+
+Gornji Vakuf:
+- PJ Gornji Vakuf, Gradska bb, phone 030 266 051.
+
+Jajce:
+- PJ Jajce, Trgovački centar BINGO, phone 030 276 750.
+- PJ Jajce II, Donje Pijavice bb, phone 062 343 432.
+
+Kakanj:
+- PJ Kakanj, 311. Lahke brigade bb, phone 061 304 001.
+
+Busovača:
+- PJ Busovača, Zagrebačka bb, phone 061 190 120.
+
+Kiseljak:
+- PJ Kiseljak, Zagrebačka br. 3, phone 030 871 195.
+
+Vitez:
+- PJ Vitez, Kralja Tvrtka bb, phone 030 710 485.
+- PJ Vitez II, Trgovački centar BELAMIONIX, phone 030 294 303.
+
+Ilijaš:
+- PJ Ilijaš, Podlugovi bb, phone 033 670 166.
+
+Zenica:
+- PJ Zenica, Željezarska bb, phone 062 133 551.
+- PJ Zenica II, Aska Borića bb, phone 032 222 525.
+
+Gračanica:
+- PJ Gračanica, Branilaca grada bb, phone 035 214 110.
 
 ## Delivery
 
